@@ -1,0 +1,9 @@
+dist
+*.egg-info/
+.eggs/
+*.pyc
+.tox
+*~
+*.snap
+docs-build/
+config.yaml

@@ -1,0 +1,19 @@
+s3:
+  bucket_name: "bucket1"
+  bucket_region: "region1"
+
+source:
+  # config1.vmdk generated with
+  # dd if=/dev/zero of=config1.raw bs=1K count=1
+  # qemu-img convert -f raw -O vmdk -o subformat=streamOptimized config1.raw config1.vmdk
+  path: "config1.vmdk"
+  architecture: "x86_64"
+
+images:
+  "test-image-1":
+    description: |
+      A test image
+    boot_mode: "uefi"
+
+tags:
+  name: "foobar"

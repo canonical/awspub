@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "awspub"
+authors = [
+    {name = "Thomas Bechtold", email = "thomasbechtold@jpberlin.de"},
+]
+description = "PUblish to AWS EC2"
+readme = "README.rst"
+requires-python = ">=3.9"
+keywords = ["aws", "ec2", "cloud"]
+license = {text = "Apache-2.0"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "boto3",
+    "boto3-stubs[essential]",
+    "pydantic",
+    "pyyaml",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = [
+     "flake8",
+     "black",
+     "pytest",
+]
+type = [
+    "mypy",
+    "types-PyYAML",
+    "pytest",
+]
+doc = [
+    "Sphinx",
+    "autodoc_pydantic",
+]
+
+
+
+[project.scripts]
+awspub = "awspub.cli:main"
