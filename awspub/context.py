@@ -79,7 +79,7 @@ class Context:
         self._conf_path = conf_path
         self._conf = None
         with open(self._conf_path, "r") as f:
-            y = yaml.safe_load(f)
+            y = yaml.safe_load(f)["awspub"]
             self._conf = _ConfigModel(**y).model_dump()
 
         # handle relative paths in config files. those are relative to the config file dirname
