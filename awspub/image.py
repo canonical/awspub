@@ -2,7 +2,7 @@ from mypy_boto3_ec2.client import EC2Client
 import hashlib
 import boto3
 import logging
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 
 from awspub.context import Context
 from awspub.snapshot import Snapshot
@@ -33,7 +33,7 @@ class Image:
         return f"<{self.__class__} :'{self.image_name}' (snapshot name: {self.snapshot_name})"
 
     @property
-    def conf(self) -> Dict[str, str]:
+    def conf(self) -> Dict[str, Any]:
         """
         The configuration for the current image (based on "image_name") from context
         """
