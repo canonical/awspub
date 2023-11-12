@@ -1,45 +1,57 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
-[project]
+[tool.poetry]
 name = "awspub"
+version = "0.1.0"
+description = "Publish images to AWS EC2"
+
+license = "Apache-2.0"
+
 authors = [
-    {name = "Thomas Bechtold", email = "thomasbechtold@jpberlin.de"},
-]
-description = "PUblish to AWS EC2"
-readme = "README.rst"
-requires-python = ">=3.9"
-keywords = ["aws", "ec2", "cloud"]
-license = {text = "Apache-2.0"}
-classifiers = [
-    "Programming Language :: Python :: 3",
-]
-dependencies = [
-    "boto3",
-    "boto3-stubs[essential]",
-    "pydantic",
-    "pyyaml",
-]
-dynamic = ["version"]
-
-[project.optional-dependencies]
-test = [
-     "flake8",
-     "black",
-     "pytest",
-]
-type = [
-    "mypy",
-    "types-PyYAML",
-    "pytest",
-]
-doc = [
-    "Sphinx",
-    "autodoc_pydantic",
+    "Thomas Bechtold <thomasbechtold@jpberlin.de>"
 ]
 
+repository = "https://github.com/toabctl/awspub"
+homepage = "https://github.com/toabctl/awspub"
+readme = ["LICENSE"]
+keywords = ["AWS", "EC2", "publication"]
 
 
-[project.scripts]
+[tool.poetry.dependencies]
+python = "^3.9"
+boto3 = "*"
+pydantic = "^2"
+pyyaml = "*"
+boto3-stubs = {extras = ["essential"], version = "^1.28.83"}
+autodoc-pydantic = "^2.0.1"
+
+
+[tool.poetry.group.test]
+optional = true
+
+[tool.poetry.group.test.dependencies]
+flake8 = "*"
+black = "*"
+pytest = "*"
+
+[tool.poetry.group.type]
+optional = true
+
+[tool.poetry.group.type.dependencies]
+mypy = "*"
+types-PyYAML = "*"
+pytest = "*"
+
+[tool.poetry.group.doc]
+optional = true
+
+[tool.poetry.group.doc.dependencies]
+Sphinx = "*"
+pydantic-settings = "*"
+autodoc_pydantic = "*"
+
+
+[tool.poetry.scripts]
 awspub = "awspub.cli:main"
