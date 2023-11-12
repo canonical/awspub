@@ -4,18 +4,18 @@ Reference for configuration
 This is the documentation for the pydantic models which are
 use for config validation.
 
-.. autopydantic_model:: awspub.context._ConfigModel
+.. autopydantic_model:: awspub.configmodels.ConfigModel
    :model-show-json: True
    :model-show-config-summary: True
 
-.. autopydantic_model:: awspub.context._ConfigS3Model
+.. autopydantic_model:: awspub.configmodels.ConfigS3Model
    :model-show-json: True
    :model-show-config-summary: True
 
-.. autopydantic_model:: awspub.context._ConfigSourceModel
+.. autopydantic_model:: awspub.configmodels.ConfigSourceModel
    :model-show-json: True
    :model-show-config-summary: True
 
-.. autopydantic_model:: awspub.context._ConfigImageModel
+.. autopydantic_model:: awspub.configmodels.ConfigImageModel
    :model-show-json: True
    :model-show-config-summary: True
