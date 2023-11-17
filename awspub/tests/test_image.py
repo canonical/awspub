@@ -29,7 +29,7 @@ curdir = pathlib.Path(__file__).parent.resolve()
 )
 def test_snapshot_names(imagename, snapshotname):
     """
-    Create a Context object from a given configuration
+    Test the snapshot name calculation based on the image properties
     """
     ctx = context.Context(curdir / "fixtures/config1.yaml")
     assert ctx.conf["source"]["path"] == curdir / "fixtures/config1.vmdk"
