@@ -54,6 +54,9 @@ class ConfigImageModel(BaseModel):
     share: Optional[List[str]] = Field(
         description="Optional list of account IDs the image and snapshot will be shared with", default=None
     )
+    temporary: Optional[bool] = Field(
+        description="Optional boolean field indicates that a image is only temporary", default=False
+    )
 
 
 class ConfigModel(BaseModel):

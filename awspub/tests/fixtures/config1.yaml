@@ -18,6 +18,7 @@ awspub:
       regions:
         - region1
         - region2
+      temporary: true
     "test-image-2":
       description: |
         A test image with a separate snapshot

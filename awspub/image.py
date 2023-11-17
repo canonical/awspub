@@ -154,6 +154,41 @@ class Image:
                 f"name {self.image_name} in region {ec2client.meta.region_name}. There should be only 1."
             )
 
+    def cleanup(self) -> None:
+        """
+        Cleanup/delete the temporary images
+
+        If an image is marked as "temporary" in the configuration, do
+        delete that image in all regions.
+        Note: if a temporary image is public, it won't be deleted. A temporary
+        image should never be public
+        Note: the underlying snapshot is currently not deleted. That might change in
+        the future
+        """
+        if not self.conf["temporary"]:
+            logger.info(f"image {self.image_name} not marked as temporary. no cleanup")
+            return
+
+        # do the cleanup - the image is marked as temporary
+        logger.info(f"Cleanup image {self.image_name} ...")
+        for region in self.image_regions:
+            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+            image_id: Optional[str] = self._get(ec2client_region)
+
+            if image_id:
+                resp = ec2client_region.describe_images(
+                    Filters=[
+                        {"Name": "image-id", "Values": [image_id]},
+                    ]
+                )
+                if resp["Images"][0]["Public"] is True:
+                    # this shouldn't happen because the image is marked as temporary in the config
+                    # so how can it be public?
+                    logger.error(f"no cleanup for {self.image_name} in {region} because ({image_id}) image is public")
+                else:
+                    ec2client_region.deregister_image(ImageId=image_id)
+                    logger.info(f"{self.image_name} in {region} ({image_id}) deleted")
+
     def create(self) -> Dict[str, str]:
         """
         Get or create a image based on the available configuration

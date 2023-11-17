@@ -61,3 +61,23 @@ def test_image_regions(imagename, regions):
         ctx = context.Context(curdir / "fixtures/config1.yaml")
         img = image.Image(ctx, imagename)
         assert img.image_regions == regions
+
+
+@pytest.mark.parametrize(
+    "imagename,cleanup",
+    [
+        ("test-image-1", True),
+        ("test-image-2", False),
+    ],
+)
+def test_image_cleanup(imagename, cleanup):
+    """
+    Test the cleanup for a given image
+    """
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+        instance.describe_images.return_value = {"Images": [{"Name": imagename, "Public": False, "ImageId": "ami-123"}]}
+        ctx = context.Context(curdir / "fixtures/config1.yaml")
+        img = image.Image(ctx, imagename)
+        img.cleanup()
+        assert instance.deregister_image.called == cleanup

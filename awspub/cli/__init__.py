@@ -43,6 +43,16 @@ def _verify(args) -> None:
     args.output.write((json.dumps(problems, indent=4)))
 
 
+def _cleanup(args) -> None:
+    """
+    Cleanup available images
+    """
+    ctx = Context(args.config)
+    for image_name in ctx.conf["images"].keys():
+        image = Image(ctx, image_name)
+        image.cleanup()
+
+
 def _parser():
     parser = argparse.ArgumentParser(description="AWS EC2 publication tool")
     parser.add_argument("--log-level", choices=["info", "debug"], default="info")
@@ -65,6 +75,16 @@ def _parser():
     p_verify.add_argument("config", type=pathlib.Path, help="the image configuration file path")
 
     p_verify.set_defaults(func=_verify)
+
+    # cleanup
+    p_cleanup = p_sub.add_parser("cleanup", help="Cleanup images")
+    p_cleanup.add_argument(
+        "--output", type=argparse.FileType("w+"), help="output file path. defaults to stdout", default=sys.stdout
+    )
+    p_cleanup.add_argument("config", type=pathlib.Path, help="the image configuration file path")
+
+    p_cleanup.set_defaults(func=_cleanup)
+
     return parser
 
 
