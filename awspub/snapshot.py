@@ -99,8 +99,8 @@ class Snapshot:
         :type ec2client: EC2Client
         :param snapshot_name: the Snapshot name
         :type snapshot_name: str
-        return: a snapshot-id
-        rtype: str
+        :return: a snapshot-id
+        :rtype: str
         """
         # does a snapshot with the given name already exists?
         snap_id: Optional[str] = self._get(ec2client, snapshot_name)
