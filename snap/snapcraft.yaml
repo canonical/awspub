@@ -1,0 +1,38 @@
+---
+name: awspub
+summary: A tool to aid in the publication of aws images
+description: |
+  A tool to aid in the publication of aws images
+version: test
+base: core22
+confinement: strict
+
+plugs:
+  dot-config-aws:
+    interface: personal-files
+    read:
+    - $HOME/.aws
+
+apps:
+  awspub:
+    command: bin/awspub
+    environment:
+      PYTHONPATH: $SNAP/lib/python3.10/site-packages
+      # need to set $HOME to the real HOME here because this is a strict snap
+      # and the creds for aws are in $HOME/.aws
+      HOME: $SNAP_REAL_HOME
+    plugs:
+      - home
+      - network
+      - dot-config-aws
+
+parts:
+  awspub:
+    plugin: python
+    source: .
+    stage-packages:
+      - python3-poetry
+    override-build: |
+      craftctl default
+      pip install .
+      sed -i 's|'"$SNAPCRAFT_PART_INSTALL"'||' $SNAPCRAFT_PART_INSTALL/bin/awspub
