@@ -1,3 +1,4 @@
+from unittest.mock import patch
 import pytest
 import pathlib
 
@@ -37,3 +38,26 @@ def test_snapshot_names(imagename, snapshotname):
 
     img = image.Image(ctx, imagename)
     assert img.snapshot_name == snapshotname
+
+
+@pytest.mark.parametrize(
+    "imagename,regions",
+    [
+        # test-image-1 has 2 regions defined
+        ("test-image-1", ["region1", "region2"]),
+        # test-image-2 has no regions defined, so whatever the ec2 client returns should be valid
+        ("test-image-2", ["all-region-1", "all-region-2"]),
+    ],
+)
+def test_image_regions(imagename, regions):
+    """
+    Test the regions for a given image
+    """
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+        instance.describe_regions.return_value = {
+            "Regions": [{"RegionName": "all-region-1"}, {"RegionName": "all-region-2"}]
+        }
+        ctx = context.Context(curdir / "fixtures/config1.yaml")
+        img = image.Image(ctx, imagename)
+        assert img.image_regions == regions

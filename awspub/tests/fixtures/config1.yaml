@@ -15,6 +15,9 @@ awspub:
       description: |
         A test image
       boot_mode: "uefi"
+      regions:
+        - region1
+        - region2
     "test-image-2":
       description: |
         A test image with a separate snapshot
