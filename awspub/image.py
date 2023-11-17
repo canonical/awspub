@@ -75,6 +75,12 @@ class Image:
             for bp in self.conf["billing_products"]:
                 s_name += hashlib.sha256(bp.encode("utf-8")).hexdigest()
 
+        # in the separate_snapshot and billing_products had no effect, don't do another sha256 of
+        # the source_sha256 to simplify things
+        if s_name == self._ctx.source_sha256:
+            return s_name
+
+        # do a sha256 of the concatenated string
         return hashlib.sha256(s_name.encode("utf-8")).hexdigest()
 
     @property

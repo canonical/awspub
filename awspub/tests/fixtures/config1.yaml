@@ -15,6 +15,31 @@ awspub:
       description: |
         A test image
       boot_mode: "uefi"
+    "test-image-2":
+      description: |
+        A test image with a separate snapshot
+      boot_mode: "uefi"
+      separate_snapshot: true
+    "test-image-3":
+      description: |
+        A test image with a separate snapshot and a billing code
+      boot_mode: "uefi"
+      separate_snapshot: true
+      billing_products:
+        - billingcode
+    "test-image-4":
+      description: |
+        A test image without a separate snapshot but a billing product
+      boot_mode: "uefi-preferred"
+      billing_products:
+        - billingcode
+    "test-image-5":
+      description: |
+        A test image without a separate snapshot but multiple billing products
+      boot_mode: "uefi-preferred"
+      billing_products:
+        - billingcode1
+        - billingcode2
 
   tags:
     name: "foobar"
