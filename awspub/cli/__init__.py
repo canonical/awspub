@@ -28,7 +28,7 @@ def _create(args) -> None:
         image = Image(ctx, image_name)
         res = image.create()
         images[image_name] = res
-    args.output.write((json.dumps(images, indent=4)))
+    args.output.write((json.dumps({"images": images}, indent=4)))
 
 
 def _verify(args) -> None:
@@ -40,7 +40,7 @@ def _verify(args) -> None:
     for image_name in ctx.conf["images"].keys():
         image = Image(ctx, image_name)
         problems[image_name] = image.verify()
-    args.output.write((json.dumps(problems, indent=4)))
+    args.output.write((json.dumps({"problems": problems}, indent=4)))
 
 
 def _cleanup(args) -> None:
