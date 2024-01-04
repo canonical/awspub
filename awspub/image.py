@@ -253,6 +253,9 @@ class Image:
                         uefi_data = f.read()
                     register_image_kwargs["UefiData"] = uefi_data
 
+                if self.conf["billing_products"]:
+                    register_image_kwargs["BillingProducts"] = self.conf["billing_products"]
+
                 resp = ec2client_region.register_image(**register_image_kwargs)
                 ec2client_region.create_tags(Resources=[resp["ImageId"]], Tags=self._ctx.tags)
                 image_ids[region] = resp["ImageId"]
