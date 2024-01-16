@@ -1,0 +1,49 @@
+awspub:
+  s3:
+    bucket_name: "bucket1"
+    bucket_region: "region1"
+
+  source:
+    # config1.vmdk generated with
+    # dd if=/dev/zero of=config1.raw bs=1K count=1
+    # qemu-img convert -f raw -O vmdk -o subformat=streamOptimized config1.raw config1.vmdk
+    path: "config1.vmdk"
+    architecture: "x86_64"
+
+  images:
+    "test-image-$key1":
+      description: |
+        A test image
+      boot_mode: "uefi"
+      regions:
+        - region1
+        - region2
+      temporary: true
+    "test-image-$key2":
+      description: |
+        A test image with a separate snapshot
+      boot_mode: "uefi"
+      separate_snapshot: true
+    "test-image-3":
+      description: |
+        A test image with a separate snapshot and a billing code
+      boot_mode: "uefi"
+      separate_snapshot: true
+      billing_products:
+        - billingcode
+    "test-image-4":
+      description: |
+        A test image without a separate snapshot but a billing product
+      boot_mode: "uefi-preferred"
+      billing_products:
+        - billingcode
+    "test-image-5":
+      description: |
+        A test image without a separate snapshot but multiple billing products
+      boot_mode: "uefi-preferred"
+      billing_products:
+        - billingcode1
+        - billingcode2
+
+  tags:
+    name: "foobar"

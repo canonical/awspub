@@ -32,7 +32,7 @@ def test_snapshot_names(imagename, snapshotname):
     """
     Test the snapshot name calculation based on the image properties
     """
-    ctx = context.Context(curdir / "fixtures/config1.yaml")
+    ctx = context.Context(curdir / "fixtures/config1.yaml", None)
     assert ctx.conf["source"]["path"] == curdir / "fixtures/config1.vmdk"
     assert ctx.source_sha256 == "6252475408b9f9ee64452b611d706a078831a99b123db69d144d878a0488a0a8"
 
@@ -58,7 +58,7 @@ def test_image_regions(imagename, regions):
         instance.describe_regions.return_value = {
             "Regions": [{"RegionName": "all-region-1"}, {"RegionName": "all-region-2"}]
         }
-        ctx = context.Context(curdir / "fixtures/config1.yaml")
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, imagename)
         assert img.image_regions == regions
 
@@ -77,7 +77,7 @@ def test_image_cleanup(imagename, cleanup):
     with patch("boto3.client") as bclient_mock:
         instance = bclient_mock.return_value
         instance.describe_images.return_value = {"Images": [{"Name": imagename, "Public": False, "ImageId": "ami-123"}]}
-        ctx = context.Context(curdir / "fixtures/config1.yaml")
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, imagename)
         img.cleanup()
         assert instance.deregister_image.called == cleanup

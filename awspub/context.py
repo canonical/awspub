@@ -1,8 +1,13 @@
 import hashlib
 import pathlib
+import logging
 import yaml
+from string import Template
 
 from awspub.configmodels import ConfigModel
+
+
+logger = logging.getLogger(__name__)
 
 
 class Context:
@@ -11,12 +16,26 @@ class Context:
     automatically calculated values
     """
 
-    def __init__(self, conf_path: pathlib.Path):
+    def __init__(self, conf_path: pathlib.Path, conf_template_mapping_path: pathlib.Path):
         self._conf_path = conf_path
         self._conf = None
+        self._conf_template_mapping_path = conf_template_mapping_path
+        self._conf_template_mapping = {}
+
+        # read the config mapping first
+        if self._conf_template_mapping_path:
+            with open(self._conf_template_mapping_path, "r") as ctm:
+                self._conf_template_mapping = yaml.safe_load(ctm)
+                logger.debug(f"loaded config template mapping for substitution: {self._conf_template_mapping}")
+
+        # read the config itself
         with open(self._conf_path, "r") as f:
-            y = yaml.safe_load(f)["awspub"]
+            template = Template(f.read())
+            # substitute the values in the config with values from the config template mapping
+            ft = template.substitute(**self._conf_template_mapping)
+            y = yaml.safe_load(ft)["awspub"]
             self._conf = ConfigModel(**y).model_dump()
+            logger.debug(f"config loaded as: {self._conf}")
 
         # handle relative paths in config files. those are relative to the config file dirname
         if not self.conf["source"]["path"].is_absolute():

@@ -20,7 +20,7 @@ def _create(args) -> None:
     Create images based on the given configuration and write json
     data to the given output
     """
-    ctx = Context(args.config)
+    ctx = Context(args.config, args.config_mapping)
     s3 = S3(ctx)
     s3.upload_file(ctx.conf["source"]["path"], ctx.conf["source"]["architecture"])
     images: Dict[str, Dict[str, str]] = dict()
@@ -36,7 +36,7 @@ def _verify(args) -> None:
     Verify available images against configuration
     """
     problems: Dict[str, Dict] = dict()
-    ctx = Context(args.config)
+    ctx = Context(args.config, args.config_mapping)
     for image_name in ctx.conf["images"].keys():
         image = Image(ctx, image_name)
         problems[image_name] = image.verify()
@@ -47,7 +47,7 @@ def _cleanup(args) -> None:
     """
     Cleanup available images
     """
-    ctx = Context(args.config)
+    ctx = Context(args.config, args.config_mapping)
     for image_name in ctx.conf["images"].keys():
         image = Image(ctx, image_name)
         image.cleanup()
@@ -64,6 +64,7 @@ def _parser():
     p_create.add_argument(
         "--output", type=argparse.FileType("w+"), help="output file path. defaults to stdout", default=sys.stdout
     )
+    p_create.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
     p_create.add_argument("config", type=pathlib.Path, help="the image configuration file path")
     p_create.set_defaults(func=_create)
 
