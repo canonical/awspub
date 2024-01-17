@@ -57,6 +57,9 @@ class ConfigImageModel(BaseModel):
     temporary: Optional[bool] = Field(
         description="Optional boolean field indicates that a image is only temporary", default=False
     )
+    public: Optional[bool] = Field(
+        description="Optional boolean field indicates if the image should be public", default=False
+    )
 
 
 class ConfigModel(BaseModel):

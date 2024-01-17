@@ -44,6 +44,21 @@ awspub:
       billing_products:
         - billingcode1
         - billingcode2
+    "test-image-6":
+      description: |
+        A test image without a separate snapshot but multiple billing products
+      boot_mode: "uefi-preferred"
+      regions:
+        - "eu-central-1"
+      public: true
+    "test-image-7":
+      description: |
+        A test image without a separate snapshot but multiple billing products
+      boot_mode: "uefi-preferred"
+      regions:
+        - "eu-central-1"
+      public: true
+      temporary: true
 
   tags:
     name: "foobar"

@@ -81,3 +81,75 @@ def test_image_cleanup(imagename, cleanup):
         img = image.Image(ctx, imagename)
         img.cleanup()
         assert instance.deregister_image.called == cleanup
+
+
+@pytest.mark.parametrize(
+    "root_device_name,block_device_mappings,snapshot_id",
+    [
+        ("", [], None),
+        ("/dev/sda1", [], None),
+        (
+            "/dev/sda1",
+            [
+                {
+                    "DeviceName": "/dev/sda1",
+                    "Ebs": {
+                        "DeleteOnTermination": True,
+                        "SnapshotId": "snap-0be0763f84af34e05",
+                        "VolumeSize": 17,
+                        "VolumeType": "gp2",
+                        "Encrypted": False,
+                    },
+                },
+                {"DeviceName": "/dev/sdb", "VirtualName": "ephemeral0"},
+            ],
+            "snap-0be0763f84af34e05",
+        ),
+    ],
+)
+def test_image___get_root_device_snapshot_id(root_device_name, block_device_mappings, snapshot_id):
+    """
+    Test the _get_root_device_snapshot_id() method
+    """
+    i = {"RootDeviceName": root_device_name, "BlockDeviceMappings": block_device_mappings}
+    ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+    img = image.Image(ctx, "test-image-1")
+    assert img._get_root_device_snapshot_id(i) == snapshot_id
+
+
+@pytest.mark.parametrize(
+    "imagename,called",
+    [
+        ("test-image-6", True),
+        ("test-image-7", False),
+    ],
+)
+def test_image_public(imagename, called):
+    """
+    Test the public() for a given image
+    """
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+        instance.describe_images.return_value = {
+            "Images": [
+                {
+                    "Name": imagename,
+                    "ImageId": "ami-abc",
+                    "RootDeviceName": "/dev/sda1",
+                    "BlockDeviceMappings": [
+                        {
+                            "DeviceName": "/dev/sda1",
+                            "Ebs": {
+                                "DeleteOnTermination": True,
+                                "SnapshotId": "snap-0be0763f84af34e05",
+                            },
+                        },
+                    ],
+                }
+            ]
+        }
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        img = image.Image(ctx, imagename)
+        img.public()
+        assert instance.modify_image_attribute.called == called
+        assert instance.modify_snapshot_attribute.called == called

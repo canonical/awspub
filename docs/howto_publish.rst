@@ -50,7 +50,8 @@ Calling now `awspub` to publish the image with the name `my-custom-image`.
     }
   }
 
-The output shows the published image IDs for each region.
+The output shows the published image IDs for each region. Those images are not
+public so can only be used from within the same account.
 
 .. note::
    The command can be run again without publishing anything new as long as the source path file
@@ -110,3 +111,19 @@ Using both together now with `awspub`:
       }
     }
   }
+
+Public images
+~~~~~~~~~~~~~
+
+To make images public, the configuration needs to have the `public` flag set for
+each image that needs to be public.
+
+.. literalinclude:: config-samples/config-minimal-public.yaml
+   :language: yaml
+
+The the image needs to be created and published:
+
+.. code-block:: shell
+
+  awspub create config.yaml
+  awspub public config.yaml
