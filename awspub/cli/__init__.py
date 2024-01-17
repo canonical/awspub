@@ -73,6 +73,7 @@ def _parser():
     p_verify.add_argument(
         "--output", type=argparse.FileType("w+"), help="output file path. defaults to stdout", default=sys.stdout
     )
+    p_verify.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
     p_verify.add_argument("config", type=pathlib.Path, help="the image configuration file path")
 
     p_verify.set_defaults(func=_verify)
@@ -82,6 +83,7 @@ def _parser():
     p_cleanup.add_argument(
         "--output", type=argparse.FileType("w+"), help="output file path. defaults to stdout", default=sys.stdout
     )
+    p_cleanup.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
     p_cleanup.add_argument("config", type=pathlib.Path, help="the image configuration file path")
 
     p_cleanup.set_defaults(func=_cleanup)
