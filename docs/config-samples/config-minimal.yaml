@@ -1,0 +1,10 @@
+awspub:
+  source:
+    path: "image.vmdk"
+    architecture: "x86_64"
+  s3:
+    bucket_name: "awspub-toabctl"
+    bucket_region: "eu-central-1"
+  images:
+    "my-custom-image":
+      boot_mode: "uefi-preferred"
