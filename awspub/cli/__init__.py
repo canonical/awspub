@@ -53,6 +53,16 @@ def _cleanup(args) -> None:
         image.cleanup()
 
 
+def _public(args) -> None:
+    """
+    Make available images public
+    """
+    ctx = Context(args.config, args.config_mapping)
+    for image_name in ctx.conf["images"].keys():
+        image = Image(ctx, image_name)
+        image.public()
+
+
 def _parser():
     parser = argparse.ArgumentParser(description="AWS EC2 publication tool")
     parser.add_argument("--log-level", choices=["info", "debug"], default="info")
@@ -87,6 +97,16 @@ def _parser():
     p_cleanup.add_argument("config", type=pathlib.Path, help="the image configuration file path")
 
     p_cleanup.set_defaults(func=_cleanup)
+
+    # public
+    p_public = p_sub.add_parser("public", help="Publish images")
+    p_public.add_argument(
+        "--output", type=argparse.FileType("w+"), help="output file path. defaults to stdout", default=sys.stdout
+    )
+    p_public.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
+    p_public.add_argument("config", type=pathlib.Path, help="the image configuration file path")
+
+    p_public.set_defaults(func=_public)
 
     return parser
 

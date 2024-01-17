@@ -128,6 +128,29 @@ class Image:
             )
         logger.info(f"shared images & snapshots with '{self.conf['share']}'")
 
+    def _get_root_device_snapshot_id(self, image):
+        """
+        Get the root device snapshot id for a given image
+        :param image: a image structure returned by eg. describe_images()["Images"][0]
+        :type image: dict
+        :return: Either None or a snapshot-id
+        :rtype: Optional[str]
+        """
+        root_device_name = image.get("RootDeviceName")
+        if not root_device_name:
+            logger.debug(f"can not get RootDeviceName for image {image}")
+            return None
+        for bdm in image["BlockDeviceMappings"]:
+            if bdm["DeviceName"] == root_device_name:
+                ebs = bdm.get("Ebs")
+                if not ebs:
+                    logger.debug(
+                        f"can not get RootDeviceName. root device {root_device_name} doesn't have a Ebs section"
+                    )
+                    return None
+                logger.debug(f"found Ebs for root device {root_device_name}: {bdm['Ebs']}")
+                return bdm["Ebs"]["SnapshotId"]
+
     def _get(self, ec2client: EC2Client) -> Optional[str]:
         """
         Get the AMI id for the current Image
@@ -275,6 +298,55 @@ class Image:
         self._share(image_ids, snapshot_ids)
 
         return image_ids
+
+    def public(self) -> None:
+        """
+        Make an image and the underlying snapshot public if the public flag is set in the config
+        Note: if public and temporary are both set, the image will **not** be made public
+        Note: this command doesn't unpublish anything!
+        """
+        if not self.conf["public"]:
+            logger.info(f"image {self.image_name} not marked as public. do not publish")
+            return
+
+        # never publish temporary images
+        if self.conf["temporary"]:
+            logger.warning(f"image {self.image_name} marked as temporary. do not publish")
+            return
+
+        # do the publication
+        logger.info(f"Make image {self.image_name} in {len(self.image_regions)} regions public ...")
+        for region in self.image_regions:
+            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+            image_id: Optional[str] = self._get(ec2client_region)
+            if image_id:
+                resp = ec2client_region.describe_images(
+                    Filters=[
+                        {"Name": "image-id", "Values": [image_id]},
+                    ]
+                )
+                snapshot_id = self._get_root_device_snapshot_id(resp["Images"][0])
+                ec2client_region.modify_image_attribute(
+                    ImageId=image_id,
+                    LaunchPermission={
+                        "Add": [
+                            {
+                                "Group": "all",
+                            },
+                        ],
+                    },
+                )
+
+                ec2client_region.modify_snapshot_attribute(
+                    SnapshotId=snapshot_id,
+                    Attribute="createVolumePermission",
+                    GroupNames=[
+                        "all",
+                    ],
+                    OperationType="add",
+                )
+
+                logger.info(f"image {image_id} and snapshot {snapshot_id} are public in region {region} now")
 
     def verify(self) -> Dict[str, List[str]]:
         """
