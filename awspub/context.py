@@ -39,12 +39,12 @@ class Context:
 
         # handle relative paths in config files. those are relative to the config file dirname
         if not self.conf["source"]["path"].is_absolute():
-            self.conf["source"]["path"] = self._conf_path.parent / self.conf["source"]["path"]
+            self.conf["source"]["path"] = pathlib.Path(self._conf_path).parent / self.conf["source"]["path"]
 
         for image_name, props in self.conf["images"].items():
             if props["uefi_data"] and not self.conf["images"][image_name]["uefi_data"].is_absolute():
                 self.conf["images"][image_name]["uefi_data"] = (
-                    self._conf_path.parent / self.conf["images"][image_name]["uefi_data"]
+                    pathlib.Path(self._conf_path).parent / self.conf["images"][image_name]["uefi_data"]
                 )
 
         # calculate the sha256 sum of the source file once
