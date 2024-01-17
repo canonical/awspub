@@ -67,4 +67,4 @@ class ConfigModel(BaseModel):
     s3: ConfigS3Model
     source: ConfigSourceModel
     images: Dict[str, ConfigImageModel]
-    tags: Optional[Dict[str, str]] = Field(description="Optional Tags to apply to resources")
+    tags: Optional[Dict[str, str]] = Field(description="Optional Tags to apply to resources", default={})
