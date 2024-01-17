@@ -1,7 +1,7 @@
 Welcome to awspub's documentation!
 ==================================
 
-`awspub` is a python module to publish AWS EC2 images.
+`awspub <https://github.com/canonical/awspub>`_ is a python module to publish AWS EC2 images.
 It handles image publication for a given source file (usually a .vmdk file).
 Only EBS backed images/AMIs are supported!
 
