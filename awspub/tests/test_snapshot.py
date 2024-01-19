@@ -59,3 +59,61 @@ def test_snapshot__get_multiple_exist():
             {"Name": "status", "Values": ["pending", "completed"]},
         ]
     )
+
+
+def test_snapshot__get_import_snapshot_task_completed():
+    """
+    Test the Snapshot._get_import_snapshot_task() method
+    """
+    ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+    s = snapshot.Snapshot(ctx)
+    client_mock = MagicMock()
+    client_mock.describe_import_snapshot_tasks = MagicMock(
+        return_value={
+            "ImportSnapshotTasks": [
+                {
+                    "ImportTaskId": "import-snap-08b79d7b5d382d56b",
+                    "SnapshotTaskDetail": {
+                        "SnapshotId": "snap-0e0f3407a1b541c40",
+                        "Status": "completed",
+                    },
+                    "Tags": [
+                        {"Key": "Name", "Value": "021abb3f2338b5e57b5d870816565429659bc70769d71c486234ad60fe6aec67"},
+                    ],
+                }
+            ],
+        }
+    )
+    assert (
+        s._get_import_snapshot_task(client_mock, "021abb3f2338b5e57b5d870816565429659bc70769d71c486234ad60fe6aec67")
+        is None
+    )
+
+
+def test_snapshot__get_import_snapshot_task_active():
+    """
+    Test the Snapshot._get_import_snapshot_task() method
+    """
+    ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+    s = snapshot.Snapshot(ctx)
+    client_mock = MagicMock()
+    client_mock.describe_import_snapshot_tasks = MagicMock(
+        return_value={
+            "ImportSnapshotTasks": [
+                {
+                    "ImportTaskId": "import-snap-08b79d7b5d382d56b",
+                    "SnapshotTaskDetail": {
+                        "SnapshotId": "snap-0e0f3407a1b541c40",
+                        "Status": "active",
+                    },
+                    "Tags": [
+                        {"Key": "Name", "Value": "021abb3f2338b5e57b5d870816565429659bc70769d71c486234ad60fe6aec67"},
+                    ],
+                }
+            ],
+        }
+    )
+    assert (
+        s._get_import_snapshot_task(client_mock, "021abb3f2338b5e57b5d870816565429659bc70769d71c486234ad60fe6aec67")
+        == "import-snap-08b79d7b5d382d56b"
+    )
