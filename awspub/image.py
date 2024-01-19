@@ -3,6 +3,7 @@ import hashlib
 import boto3
 import logging
 from typing import Optional, List, Dict, Any
+from dataclasses import dataclass
 
 from awspub.context import Context
 from awspub.snapshot import Snapshot
@@ -11,6 +12,16 @@ from awspub import exceptions
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _ImageInfo:
+    """
+    Information about a image from EC2
+    """
+
+    image_id: str
+    snapshot_id: Optional[str]
 
 
 class Image:
@@ -151,23 +162,27 @@ class Image:
                 logger.debug(f"found Ebs for root device {root_device_name}: {bdm['Ebs']}")
                 return bdm["Ebs"]["SnapshotId"]
 
-    def _get(self, ec2client: EC2Client) -> Optional[str]:
+    def _get(self, ec2client: EC2Client) -> Optional[_ImageInfo]:
         """
-        Get the AMI id for the current Image
-        This relies on the image name to be unique
+        Get the a _ImageInfo for the current image which contains the ami id and
+        root device snapshot id.
+        This relies on the image name to be unique and will raise a MultipleImagesException
+        if multiple images are found.
 
         :param ec2client: EC2Client
         :type ec2client: EC2Client
-        :return: Either None or a ami-id
-        :rtype: Optional[str]
+        :return: Either None or a _ImageInfo
+        :rtype: Optional[_ImageInfo]
         """
         resp = ec2client.describe_images(
             Filters=[
                 {"Name": "name", "Values": [self.image_name]},
             ]
         )
+
         if len(resp.get("Images", [])) == 1:
-            return resp["Images"][0]["ImageId"]
+            root_device_snapshot_id = self._get_root_device_snapshot_id(resp["Images"][0])
+            return _ImageInfo(resp["Images"][0]["ImageId"], root_device_snapshot_id)
         elif len(resp.get("Images", [])) == 0:
             return None
         else:
@@ -196,21 +211,23 @@ class Image:
         logger.info(f"Cleanup image {self.image_name} ...")
         for region in self.image_regions:
             ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
-            image_id: Optional[str] = self._get(ec2client_region)
+            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
 
-            if image_id:
+            if image_info:
                 resp = ec2client_region.describe_images(
                     Filters=[
-                        {"Name": "image-id", "Values": [image_id]},
+                        {"Name": "image-id", "Values": [image_info.image_id]},
                     ]
                 )
                 if resp["Images"][0]["Public"] is True:
                     # this shouldn't happen because the image is marked as temporary in the config
                     # so how can it be public?
-                    logger.error(f"no cleanup for {self.image_name} in {region} because ({image_id}) image is public")
+                    logger.error(
+                        f"no cleanup for {self.image_name} in {region} because ({image_info.image_id}) image is public"
+                    )
                 else:
-                    ec2client_region.deregister_image(ImageId=image_id)
-                    logger.info(f"{self.image_name} in {region} ({image_id}) deleted")
+                    ec2client_region.deregister_image(ImageId=image_info.image_id)
+                    logger.info(f"{self.image_name} in {region} ({image_info.image_id}) deleted")
 
     def create(self) -> Dict[str, str]:
         """
@@ -233,13 +250,20 @@ class Image:
         image_ids: Dict[str, str] = dict()
         for region in self.image_regions:
             ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
-            image_id: Optional[str] = self._get(ec2client_region)
-            if image_id:
-                logger.info(
-                    f"image with name '{self.image_name}' already exists ({image_id}) "
-                    f"in region {ec2client_region.meta.region_name}"
-                )
-                image_ids[region] = image_id
+            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+            if image_info:
+                if image_info.snapshot_id != snapshot_ids[region]:
+                    logger.warning(
+                        f"image with name '{self.image_name}' already exists ({image_info.image_id}) "
+                        f"in region {ec2client_region.meta.region_name} but the root device"
+                        f"snapshot id is unexpected (expected {image_info.snapshot_id} but got {snapshot_ids[region]})"
+                    )
+                else:
+                    logger.info(
+                        f"image with name '{self.image_name}' already exists ({image_info.image_id}) "
+                        f"in region {ec2client_region.meta.region_name}"
+                    )
+                image_ids[region] = image_info.image_id
             else:
                 logger.info(
                     f"creating image with name '{self.image_name}' in "
@@ -318,16 +342,10 @@ class Image:
         logger.info(f"Make image {self.image_name} in {len(self.image_regions)} regions public ...")
         for region in self.image_regions:
             ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
-            image_id: Optional[str] = self._get(ec2client_region)
-            if image_id:
-                resp = ec2client_region.describe_images(
-                    Filters=[
-                        {"Name": "image-id", "Values": [image_id]},
-                    ]
-                )
-                snapshot_id = self._get_root_device_snapshot_id(resp["Images"][0])
+            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+            if image_info:
                 ec2client_region.modify_image_attribute(
-                    ImageId=image_id,
+                    ImageId=image_info.image_id,
                     LaunchPermission={
                         "Add": [
                             {
@@ -337,16 +355,20 @@ class Image:
                     },
                 )
 
-                ec2client_region.modify_snapshot_attribute(
-                    SnapshotId=snapshot_id,
-                    Attribute="createVolumePermission",
-                    GroupNames=[
-                        "all",
-                    ],
-                    OperationType="add",
-                )
+                if image_info.snapshot_id:
+                    ec2client_region.modify_snapshot_attribute(
+                        SnapshotId=image_info.snapshot_id,
+                        Attribute="createVolumePermission",
+                        GroupNames=[
+                            "all",
+                        ],
+                        OperationType="add",
+                    )
 
-                logger.info(f"image {image_id} and snapshot {snapshot_id} are public in region {region} now")
+                logger.info(
+                    f"image {image_info.image_id} and snapshot {image_info.snapshot_id} are public "
+                    f"in region {region} now"
+                )
 
     def verify(self) -> Dict[str, List[str]]:
         """
@@ -358,13 +380,14 @@ class Image:
         for region in self.image_regions:
             problems[region] = []
             ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
-            image_id: Optional[str] = self._get(ec2client_region)
-            if not image_id:
+            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+
+            if not image_info:
                 problems[region].append("image not available")
                 logger.error(f"  {self.image_name} / {region}: not available in region")
                 continue
 
-            image_aws = ec2client_region.describe_images(ImageIds=[image_id])["Images"][0]
+            image_aws = ec2client_region.describe_images(ImageIds=[image_info.image_id])["Images"][0]
             # verify state
             if image_aws["State"] != "available":
                 problems[region].append(f"State {image_aws['State']} != available")
