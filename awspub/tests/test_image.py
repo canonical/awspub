@@ -4,6 +4,7 @@ import pathlib
 
 from awspub import context
 from awspub import image
+from awspub import exceptions
 
 
 curdir = pathlib.Path(__file__).parent.resolve()
@@ -153,3 +154,68 @@ def test_image_public(imagename, called):
         img.public()
         assert instance.modify_image_attribute.called == called
         assert instance.modify_snapshot_attribute.called == called
+
+
+def test_image__get_zero_images():
+    """
+    Test the Image._get() method with zero matching image
+    """
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+        instance.describe_images.return_value = {"Images": []}
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        img = image.Image(ctx, "test-image-1")
+        assert img._get(instance) is None
+
+
+def test_image__get_one_images():
+    """
+    Test the Image._get() method with a single matching image
+    """
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+        instance.describe_images.return_value = {
+            "Images": [
+                {
+                    "Name": "test-image-1",
+                    "ImageId": "ami-abc",
+                    "RootDeviceName": "/dev/sda1",
+                    "BlockDeviceMappings": [
+                        {
+                            "DeviceName": "/dev/sda1",
+                            "Ebs": {
+                                "DeleteOnTermination": True,
+                                "SnapshotId": "snap-abc",
+                            },
+                        },
+                    ],
+                }
+            ]
+        }
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        img = image.Image(ctx, "test-image-1")
+        assert img._get(instance) == image._ImageInfo("ami-abc", "snap-abc")
+
+
+def test_image__get_multiple_images():
+    """
+    Test the Image._get() method with a multiple matching image
+    """
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+        instance.describe_images.return_value = {
+            "Images": [
+                {
+                    "Name": "test-image-1",
+                    "ImageId": "ami-1,",
+                },
+                {
+                    "Name": "test-image-1",
+                    "ImageId": "ami-2,",
+                },
+            ]
+        }
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        img = image.Image(ctx, "test-image-1")
+        with pytest.raises(exceptions.MultipleImagesException):
+            img._get(instance)
