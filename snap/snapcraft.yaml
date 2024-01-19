@@ -3,7 +3,7 @@ name: awspub
 summary: A tool to aid in the publication of aws images
 description: |
   A tool to aid in the publication of aws images
-version: test
+version: git
 base: core22
 confinement: strict
 
