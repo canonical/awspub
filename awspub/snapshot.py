@@ -79,7 +79,12 @@ class Snapshot:
         )
         # API doesn't support filters by status so filter here
         tasks: List = resp.get("ImportSnapshotTasks", [])
-        tasks = [t for t in tasks if t["SnapshotTaskDetail"]["Status"] != "deleted"]
+        # we already know here that the snapshot does not exist (checked in create() before calling this
+        # function). so ignore "deleted" or "completed" tasks here
+        # it might happen (for whatever reason) that a task got completed but the snapshot got deleted
+        # afterwards. In that case a "completed" task for the given snapshot_name exists but
+        # that doesn't help so ignore it
+        tasks = [t for t in tasks if t["SnapshotTaskDetail"]["Status"] not in ["deleted", "completed"]]
         if len(tasks) == 1:
             return tasks[0]["ImportTaskId"]
         elif len(tasks) == 0:
