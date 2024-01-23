@@ -56,6 +56,8 @@ awspub:
       regions:
         - "eu-central-1"
       public: true
+      tags:
+        key1: value1
     "test-image-7":
       description: |
         A test image without a separate snapshot but multiple billing products
@@ -64,6 +66,9 @@ awspub:
         - "eu-central-1"
       public: true
       temporary: true
+      tags:
+        key2: name
+        name: "not-foobar"
 
   tags:
     name: "foobar"

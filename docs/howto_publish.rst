@@ -124,11 +124,11 @@ config option:
    :language: yaml
 
 Now the different `awspub` commands do have a `--group` parameter to filter which
-images this command should operate on::
+images this command should operate on:
 
 .. code-block:: shell
 
-  awspub --log-file awspub.log create docs/config-samples/config-minimal-groups.yaml --group group1
+  awspub --log-file awspub.log create configyaml --group group1
   {
     "images": {
       "my-custom-image-1": {
@@ -137,7 +137,7 @@ images this command should operate on::
     }
   }
 
-  awspub --log-file awspub.log create docs/config-samples/config-minimal-groups.yaml --group group2
+  awspub --log-file awspub.log create config.yaml --group group2
   {
     "images": {
       "my-custom-image-2": {
@@ -170,3 +170,26 @@ The the image needs to be created and published:
 
   awspub create config.yaml
   awspub public config.yaml
+
+
+Resource tags
+~~~~~~~~~~~~~
+
+The different resources (S3 objects, snapshots and AMIs) can have tags.
+`awspub` defines some base tags which are prefixed with `awspub:`.
+In addition to those tags, there's a `tags` config where tags
+for all resources can be defined:
+
+.. literalinclude:: config-samples/config-minimal-tags.yaml
+   :language: yaml
+
+This config will add the tag(s) defined to all resources.
+It's also possible to define image specific tags:
+
+.. literalinclude:: config-samples/config-minimal-image-tags.yaml
+   :language: yaml
+
+"my-custom-image-1" would have the common tag "tag-key" plus the image specific
+tag "key1".
+"my-custom-image-2" would have the common tag "tag-key" but the value would be
+overwritten with "another-value" because image specific tags override the common tags.
