@@ -60,6 +60,7 @@ class ConfigImageModel(BaseModel):
     public: Optional[bool] = Field(
         description="Optional boolean field indicates if the image should be public", default=False
     )
+    groups: Optional[List[str]] = Field(description="Optional list of groups this image is part of", default=[])
 
 
 class ConfigModel(BaseModel):

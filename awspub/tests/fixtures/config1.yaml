@@ -19,11 +19,16 @@ awspub:
         - region1
         - region2
       temporary: true
+      groups:
+        - group1
+        - group2
     "test-image-2":
       description: |
         A test image with a separate snapshot
       boot_mode: "uefi"
       separate_snapshot: true
+      groups:
+        - group1
     "test-image-3":
       description: |
         A test image with a separate snapshot and a billing code

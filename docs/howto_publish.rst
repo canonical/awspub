@@ -112,6 +112,49 @@ Using both together now with `awspub`:
     }
   }
 
+
+Image groups
+~~~~~~~~~~~~
+
+There might be cases were the different commands (eg. `awspub create` or `awspub publish`)
+should only be applied for a subset of the defined images. That's possible with the `group`
+config option:
+
+.. literalinclude:: config-samples/config-minimal-groups.yaml
+   :language: yaml
+
+Now the different `awspub` commands do have a `--group` parameter to filter which
+images this command should operate on::
+
+.. code-block:: shell
+
+  awspub --log-file awspub.log create docs/config-samples/config-minimal-groups.yaml --group group1
+  {
+    "images": {
+      "my-custom-image-1": {
+        "us-west-1": "ami-09461116d07dd6604"
+      }
+    }
+  }
+
+  awspub --log-file awspub.log create docs/config-samples/config-minimal-groups.yaml --group group2
+  {
+    "images": {
+      "my-custom-image-2": {
+        "us-east-1": "ami-018539227554e51fe",
+        "ca-central-1": "ami-071d3602417c28201"
+      }
+    }
+  }
+
+
+So the first command only works with images defined in `group1` while the second command only with
+images defined within `group2`.
+
+.. note::
+   If no `--group` parameter is given, the different commands operate on **all** defined images.
+
+
 Public images
 ~~~~~~~~~~~~~
 
