@@ -60,6 +60,8 @@ class ConfigImageModel(BaseModel):
     public: Optional[bool] = Field(
         description="Optional boolean field indicates if the image should be public", default=False
     )
+    groups: Optional[List[str]] = Field(description="Optional list of groups this image is part of", default=[])
+    tags: Optional[Dict[str, str]] = Field(description="Optional Tags to apply to this image only", default={})
 
 
 class ConfigModel(BaseModel):
@@ -70,4 +72,4 @@ class ConfigModel(BaseModel):
     s3: ConfigS3Model
     source: ConfigSourceModel
     images: Dict[str, ConfigImageModel]
-    tags: Optional[Dict[str, str]] = Field(description="Optional Tags to apply to resources", default={})
+    tags: Optional[Dict[str, str]] = Field(description="Optional Tags to apply to all resources", default={})

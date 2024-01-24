@@ -3,6 +3,7 @@ import pathlib
 import logging
 import yaml
 from string import Template
+from typing import Dict
 
 from awspub.configmodels import ConfigModel
 
@@ -64,19 +65,28 @@ class Context:
         return self._source_sha256
 
     @property
-    def tags(self):
+    def tags_dict(self) -> Dict[str, str]:
         """
         Common tags which will be used for all AWS resources
         This includes tags defined in the configuration file
+        but doesn't include image group specific tags.
+        Usually the tags() method should be used.
         """
-        tags = [
-            {"Key": "awspub:source:filename", "Value": self.conf["source"]["path"].name},
-            {"Key": "awspub:source:architecture", "Value": self.conf["source"]["architecture"]},
-            {"Key": "awspub:source:sha256", "Value": self.source_sha256},
-        ]
+        tags = dict()
+        tags["awspub:source:filename"] = self.conf["source"]["path"].name
+        tags["awspub:source:architecture"] = self.conf["source"]["architecture"]
+        tags["awspub:source:sha256"] = self.source_sha256
+        tags.update(self.conf.get("tags", {}))
+        return tags
 
-        tags_extra = self.conf.get("tags", {})
-        for name, value in tags_extra.items():
+    @property
+    def tags(self):
+        """
+        Helper to make tags directly usable by the AWS EC2 API
+        which requires a list of dicts with "Key" and "Value" defined.
+        """
+        tags = []
+        for name, value in self.tags_dict.items():
             tags.append({"Key": name, "Value": value})
         return tags
 

@@ -5,7 +5,7 @@ import sys
 import json
 import logging
 import argparse
-from typing import Dict
+from typing import Dict, Optional
 
 from awspub.context import Context
 from awspub.s3 import S3
@@ -13,6 +13,26 @@ from awspub.image import Image
 
 
 logger = logging.getLogger(__name__)
+
+
+def _images_filtered(context: Context, group: Optional[str]):
+    """
+    Filter the images from ctx based on the given args
+    :param context: the context
+    :type context: a awspub.context.Context instance
+    :param group: a optional group name
+    :type group: Optional[str]
+    """
+    for image_name in context.conf["images"].keys():
+        image = Image(context, image_name)
+        if group:
+            # limit the images to process to the group given on the command line
+            if group not in image.conf.get("groups", []):
+                logger.info(f"skipping image {image_name} because not part of group {group}")
+                continue
+
+        logger.info(f"processing image {image_name} from group {group}")
+        yield image_name, image
 
 
 def _create(args) -> None:
@@ -24,8 +44,7 @@ def _create(args) -> None:
     s3 = S3(ctx)
     s3.upload_file(ctx.conf["source"]["path"], ctx.conf["source"]["architecture"])
     images: Dict[str, Dict[str, str]] = dict()
-    for image_name in ctx.conf["images"].keys():
-        image = Image(ctx, image_name)
+    for image_name, image in _images_filtered(ctx, args.group):
         res = image.create()
         images[image_name] = res
     args.output.write((json.dumps({"images": images}, indent=4)))
@@ -37,8 +56,7 @@ def _verify(args) -> None:
     """
     problems: Dict[str, Dict] = dict()
     ctx = Context(args.config, args.config_mapping)
-    for image_name in ctx.conf["images"].keys():
-        image = Image(ctx, image_name)
+    for image_name, image in _images_filtered(ctx, args.group):
         problems[image_name] = image.verify()
     args.output.write((json.dumps({"problems": problems}, indent=4)))
 
@@ -48,8 +66,7 @@ def _cleanup(args) -> None:
     Cleanup available images
     """
     ctx = Context(args.config, args.config_mapping)
-    for image_name in ctx.conf["images"].keys():
-        image = Image(ctx, image_name)
+    for image_name, image in _images_filtered(ctx, args.group):
         image.cleanup()
 
 
@@ -58,8 +75,7 @@ def _public(args) -> None:
     Make available images public
     """
     ctx = Context(args.config, args.config_mapping)
-    for image_name in ctx.conf["images"].keys():
-        image = Image(ctx, image_name)
+    for image_name, image in _images_filtered(ctx, args.group):
         image.public()
 
 
@@ -75,6 +91,7 @@ def _parser():
         "--output", type=argparse.FileType("w+"), help="output file path. defaults to stdout", default=sys.stdout
     )
     p_create.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
+    p_create.add_argument("--group", type=str, help="only handles images from given group")
     p_create.add_argument("config", type=pathlib.Path, help="the image configuration file path")
     p_create.set_defaults(func=_create)
 
@@ -84,6 +101,7 @@ def _parser():
         "--output", type=argparse.FileType("w+"), help="output file path. defaults to stdout", default=sys.stdout
     )
     p_verify.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
+    p_verify.add_argument("--group", type=str, help="only handles images from given group")
     p_verify.add_argument("config", type=pathlib.Path, help="the image configuration file path")
 
     p_verify.set_defaults(func=_verify)
@@ -94,6 +112,7 @@ def _parser():
         "--output", type=argparse.FileType("w+"), help="output file path. defaults to stdout", default=sys.stdout
     )
     p_cleanup.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
+    p_cleanup.add_argument("--group", type=str, help="only handles images from given group")
     p_cleanup.add_argument("config", type=pathlib.Path, help="the image configuration file path")
 
     p_cleanup.set_defaults(func=_cleanup)
@@ -104,6 +123,7 @@ def _parser():
         "--output", type=argparse.FileType("w+"), help="output file path. defaults to stdout", default=sys.stdout
     )
     p_public.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
+    p_public.add_argument("--group", type=str, help="only handles images from given group")
     p_public.add_argument("config", type=pathlib.Path, help="the image configuration file path")
 
     p_public.set_defaults(func=_public)

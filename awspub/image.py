@@ -109,6 +109,21 @@ class Image:
                 self._image_regions = [r["RegionName"] for r in resp["Regions"]]
         return self._image_regions
 
+    @property
+    def _tags(self):
+        """
+        Get the tags for this image (common tags + image specific tags)
+        image specific tags override common tags
+        """
+        tags = []
+        # the common tags
+        tags_dict = self._ctx.tags_dict
+        # the image specific tags
+        tags_dict.update(self.conf.get("tags", {}))
+        for name, value in tags_dict.items():
+            tags.append({"Key": name, "Value": value})
+        return tags
+
     def _share(self, images: Dict[str, str], snapshots: Dict[str, str]):
         """
         Share images with accounts
@@ -304,7 +319,7 @@ class Image:
                     register_image_kwargs["BillingProducts"] = self.conf["billing_products"]
 
                 resp = ec2client_region.register_image(**register_image_kwargs)
-                ec2client_region.create_tags(Resources=[resp["ImageId"]], Tags=self._ctx.tags)
+                ec2client_region.create_tags(Resources=[resp["ImageId"]], Tags=self._tags)
                 image_ids[region] = resp["ImageId"]
 
         # wait for the images

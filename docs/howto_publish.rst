@@ -112,6 +112,49 @@ Using both together now with `awspub`:
     }
   }
 
+
+Image groups
+~~~~~~~~~~~~
+
+There might be cases were the different commands (eg. `awspub create` or `awspub publish`)
+should only be applied for a subset of the defined images. That's possible with the `group`
+config option:
+
+.. literalinclude:: config-samples/config-minimal-groups.yaml
+   :language: yaml
+
+Now the different `awspub` commands do have a `--group` parameter to filter which
+images this command should operate on:
+
+.. code-block:: shell
+
+  awspub --log-file awspub.log create configyaml --group group1
+  {
+    "images": {
+      "my-custom-image-1": {
+        "us-west-1": "ami-09461116d07dd6604"
+      }
+    }
+  }
+
+  awspub --log-file awspub.log create config.yaml --group group2
+  {
+    "images": {
+      "my-custom-image-2": {
+        "us-east-1": "ami-018539227554e51fe",
+        "ca-central-1": "ami-071d3602417c28201"
+      }
+    }
+  }
+
+
+So the first command only works with images defined in `group1` while the second command only with
+images defined within `group2`.
+
+.. note::
+   If no `--group` parameter is given, the different commands operate on **all** defined images.
+
+
 Public images
 ~~~~~~~~~~~~~
 
@@ -127,3 +170,26 @@ The the image needs to be created and published:
 
   awspub create config.yaml
   awspub public config.yaml
+
+
+Resource tags
+~~~~~~~~~~~~~
+
+The different resources (S3 objects, snapshots and AMIs) can have tags.
+`awspub` defines some base tags which are prefixed with `awspub:`.
+In addition to those tags, there's a `tags` config where tags
+for all resources can be defined:
+
+.. literalinclude:: config-samples/config-minimal-tags.yaml
+   :language: yaml
+
+This config will add the tag(s) defined to all resources.
+It's also possible to define image specific tags:
+
+.. literalinclude:: config-samples/config-minimal-image-tags.yaml
+   :language: yaml
+
+"my-custom-image-1" would have the common tag "tag-key" plus the image specific
+tag "key1".
+"my-custom-image-2" would have the common tag "tag-key" but the value would be
+overwritten with "another-value" because image specific tags override the common tags.

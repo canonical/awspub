@@ -219,3 +219,58 @@ def test_image__get_multiple_images():
         img = image.Image(ctx, "test-image-1")
         with pytest.raises(exceptions.MultipleImagesException):
             img._get(instance)
+
+
+@pytest.mark.parametrize(
+    "imagename,expected_tags",
+    [
+        # no image specific tags - assume the common tags
+        (
+            "test-image-1",
+            [
+                {"Key": "awspub:source:filename", "Value": "config1.vmdk"},
+                {"Key": "awspub:source:architecture", "Value": "x86_64"},
+                {
+                    "Key": "awspub:source:sha256",
+                    "Value": "6252475408b9f9ee64452b611d706a078831a99b123db69d144d878a0488a0a8",
+                },
+                {"Key": "name", "Value": "foobar"},
+            ],
+        ),
+        # with image specific tag but no override
+        (
+            "test-image-6",
+            [
+                {"Key": "awspub:source:filename", "Value": "config1.vmdk"},
+                {"Key": "awspub:source:architecture", "Value": "x86_64"},
+                {
+                    "Key": "awspub:source:sha256",
+                    "Value": "6252475408b9f9ee64452b611d706a078831a99b123db69d144d878a0488a0a8",
+                },
+                {"Key": "name", "Value": "foobar"},
+                {"Key": "key1", "Value": "value1"},
+            ],
+        ),
+        # with image specific tag which overrides common tag
+        (
+            "test-image-7",
+            [
+                {"Key": "awspub:source:filename", "Value": "config1.vmdk"},
+                {"Key": "awspub:source:architecture", "Value": "x86_64"},
+                {
+                    "Key": "awspub:source:sha256",
+                    "Value": "6252475408b9f9ee64452b611d706a078831a99b123db69d144d878a0488a0a8",
+                },
+                {"Key": "name", "Value": "not-foobar"},
+                {"Key": "key2", "Value": "name"},
+            ],
+        ),
+    ],
+)
+def test_image__tags(imagename, expected_tags):
+    """
+    Test the Image._tags() method
+    """
+    ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+    img = image.Image(ctx, imagename)
+    assert img._tags == expected_tags
