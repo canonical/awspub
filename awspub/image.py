@@ -192,7 +192,8 @@ class Image:
         resp = ec2client.describe_images(
             Filters=[
                 {"Name": "name", "Values": [self.image_name]},
-            ]
+            ],
+            Owners=["self"],
         )
 
         if len(resp.get("Images", [])) == 1:
@@ -270,8 +271,8 @@ class Image:
                 if image_info.snapshot_id != snapshot_ids[region]:
                     logger.warning(
                         f"image with name '{self.image_name}' already exists ({image_info.image_id}) "
-                        f"in region {ec2client_region.meta.region_name} but the root device"
-                        f"snapshot id is unexpected (expected {image_info.snapshot_id} but got {snapshot_ids[region]})"
+                        f"in region {ec2client_region.meta.region_name} but the root device "
+                        f"snapshot id is unexpected (got {image_info.snapshot_id} but expected {snapshot_ids[region]})"
                     )
                 else:
                     logger.info(

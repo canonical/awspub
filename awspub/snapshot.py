@@ -44,7 +44,8 @@ class Snapshot:
                         "completed",
                     ],
                 },
-            ]
+            ],
+            OwnerIds=["self"],
         )
         if len(resp.get("Snapshots", [])) == 1:
             return resp["Snapshots"][0]["SnapshotId"]

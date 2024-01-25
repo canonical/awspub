@@ -20,7 +20,8 @@ def test_snapshot__get_none_exist():
         Filters=[
             {"Name": "tag:Name", "Values": ["snapshot-name"]},
             {"Name": "status", "Values": ["pending", "completed"]},
-        ]
+        ],
+        OwnerIds=["self"],
     )
 
 
@@ -37,7 +38,8 @@ def test_snapshot__get_one_exist():
         Filters=[
             {"Name": "tag:Name", "Values": ["snapshot-name"]},
             {"Name": "status", "Values": ["pending", "completed"]},
-        ]
+        ],
+        OwnerIds=["self"],
     )
 
 
@@ -57,7 +59,8 @@ def test_snapshot__get_multiple_exist():
         Filters=[
             {"Name": "tag:Name", "Values": ["snapshot-name"]},
             {"Name": "status", "Values": ["pending", "completed"]},
-        ]
+        ],
+        OwnerIds=["self"],
     )
 
 
