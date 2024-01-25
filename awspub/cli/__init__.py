@@ -83,6 +83,7 @@ def _parser():
     parser = argparse.ArgumentParser(description="AWS EC2 publication tool")
     parser.add_argument("--log-level", choices=["info", "debug"], default="info")
     parser.add_argument("--log-file", type=pathlib.Path, help="write log to given file instead of stdout")
+    parser.add_argument("--log-console", action=argparse.BooleanOptionalAction, help="write log to stdout")
     p_sub = parser.add_subparsers(help="sub-command help")
 
     # create
@@ -134,16 +135,23 @@ def _parser():
 def main():
     parser = _parser()
     args = parser.parse_args()
-    logformat = "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
+    log_formatter = logging.Formatter("%(asctime)s:%(name)s:%(levelname)s:%(message)s")
     # log level
     loglevel = logging.INFO
     if args.log_level == "debug":
         loglevel = logging.DEBUG
+    root_logger = logging.getLogger()
+    root_logger.setLevel(loglevel)
     # log file
     if args.log_file:
-        logging.basicConfig(filename=args.log_file, encoding="utf-8", format=logformat, level=loglevel)
-    else:
-        logging.basicConfig(format=logformat, level=loglevel)
+        file_handler = logging.FileHandler(filename=args.log_file)
+        file_handler.setFormatter(log_formatter)
+        root_logger.addHandler(file_handler)
+    # log console
+    if args.log_console:
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(log_formatter)
+        root_logger.addHandler(console_handler)
     if "func" not in args:
         sys.exit(parser.print_help())
     args.func(args)
