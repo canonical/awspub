@@ -192,7 +192,8 @@ class Image:
         resp = ec2client.describe_images(
             Filters=[
                 {"Name": "name", "Values": [self.image_name]},
-            ]
+            ],
+            Owners=["self"],
         )
 
         if len(resp.get("Images", [])) == 1:
