@@ -271,7 +271,7 @@ class Image:
                     logger.warning(
                         f"image with name '{self.image_name}' already exists ({image_info.image_id}) "
                         f"in region {ec2client_region.meta.region_name} but the root device "
-                        f"snapshot id is unexpected (expected {image_info.snapshot_id} but got {snapshot_ids[region]})"
+                        f"snapshot id is unexpected (got {image_info.snapshot_id} but expected {snapshot_ids[region]})"
                     )
                 else:
                     logger.info(
