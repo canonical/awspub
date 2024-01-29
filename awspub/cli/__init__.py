@@ -50,6 +50,19 @@ def _create(args) -> None:
     args.output.write((json.dumps({"images": images}, indent=4)))
 
 
+def _list(args) -> None:
+    """
+    List images based on the given configuration and write json
+    data to the given output
+    """
+    ctx = Context(args.config, args.config_mapping)
+    images: Dict[str, Dict[str, str]] = dict()
+    for image_name, image in _images_filtered(ctx, args.group):
+        res = image.list()
+        images[image_name] = res
+    args.output.write((json.dumps({"images": images}, indent=4)))
+
+
 def _verify(args) -> None:
     """
     Verify available images against configuration
@@ -95,6 +108,16 @@ def _parser():
     p_create.add_argument("--group", type=str, help="only handles images from given group")
     p_create.add_argument("config", type=pathlib.Path, help="the image configuration file path")
     p_create.set_defaults(func=_create)
+
+    # list
+    p_list = p_sub.add_parser("list", help="List images (but don't modify anything)")
+    p_list.add_argument(
+        "--output", type=argparse.FileType("w+"), help="output file path. defaults to stdout", default=sys.stdout
+    )
+    p_list.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
+    p_list.add_argument("--group", type=str, help="only handles images from given group")
+    p_list.add_argument("config", type=pathlib.Path, help="the image configuration file path")
+    p_list.set_defaults(func=_list)
 
     # verify
     p_verify = p_sub.add_parser("verify", help="Verify images")

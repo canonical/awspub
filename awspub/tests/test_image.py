@@ -274,3 +274,24 @@ def test_image__tags(imagename, expected_tags):
     ctx = context.Context(curdir / "fixtures/config1.yaml", None)
     img = image.Image(ctx, imagename)
     assert img._tags == expected_tags
+
+
+@pytest.mark.parametrize(
+    "available_images,expected",
+    [
+        # image not available
+        ([{"Name": "test-image-6", "ImageId": "ami-123"}], {"eu-central-1": "ami-123"}),
+        # image available
+        ([], {"eu-central-1": None}),
+    ],
+)
+def test_image_list(available_images, expected):
+    """
+    Test the list for a given image
+    """
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+        instance.describe_images.return_value = {"Images": available_images}
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        img = image.Image(ctx, "test-image-6")
+        assert img.list() == expected

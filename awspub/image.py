@@ -245,6 +245,24 @@ class Image:
                     ec2client_region.deregister_image(ImageId=image_info.image_id)
                     logger.info(f"{self.image_name} in {region} ({image_info.image_id}) deleted")
 
+    def list(self) -> Dict[str, Optional[str]]:
+        """
+        Get image based on the available configuration
+        This doesn't change anything - it just tries to get the available image
+        for the different configured regions
+        :return: a Dict with region names as keys and optional image/AMI Ids as values
+        :rtype: Dict[str, Optional[str]]
+        """
+        image_ids: Dict[str, Optional[str]] = dict()
+        for region in self.image_regions:
+            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+            if image_info:
+                image_ids[region] = image_info.image_id
+            else:
+                image_ids[region] = None
+        return image_ids
+
     def create(self) -> Dict[str, str]:
         """
         Get or create a image based on the available configuration
