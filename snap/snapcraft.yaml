@@ -20,7 +20,9 @@ plugs:
   dot-aws:
     interface: personal-files
     read:
-    - $HOME/.aws
+    - $HOME/.aws/config
+    - $HOME/.aws/credentials
+    - $HOME/.aws/models
 
 apps:
   awspub:
