@@ -17,11 +17,17 @@ issues: https://github.com/canonical/awspub/issues
 website: https://awspub.readthedocs.io/en/latest/
 
 plugs:
-  dot-aws:
+  dot-aws-config:
     interface: personal-files
     read:
     - $HOME/.aws/config
+  dot-aws-credentials:
+    interface: personal-files
+    read:
     - $HOME/.aws/credentials
+  dot-aws-models:
+    interface: personal-files
+    read:
     - $HOME/.aws/models
 
 apps:
