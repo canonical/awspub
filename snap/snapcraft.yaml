@@ -41,7 +41,9 @@ apps:
     plugs:
       - home
       - network
-      - dot-aws
+      - dot-aws-config
+      - dot-aws-credentials
+      - dot-aws-models
 
 parts:
   awspub:
