@@ -5,7 +5,7 @@ import sys
 import json
 import logging
 import argparse
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Tuple
 
 from awspub.context import Context
 from awspub.s3 import S3
@@ -35,6 +35,24 @@ def _images_filtered(context: Context, group: Optional[str]):
         yield image_name, image
 
 
+def _images_json(images: List[Tuple[str, Image, Dict[str, Optional[str]]]], group: Optional[str]):
+    """
+    Return json data which is the output for eg. the create and list commands
+    That data has images listed by name but also images grouped by the group
+    """
+    images_by_name: Dict[str, Dict[str, Optional[str]]] = dict()
+    images_by_group: Dict[str, Dict[str, Dict[str, Optional[str]]]] = dict()
+    for image_name, image, result in images:
+        images_by_name[image_name] = result
+        for image_group in image.conf.get("groups", []):
+            if group and image_group != group:
+                continue
+            if not images_by_group.get(image_group):
+                images_by_group[image_group] = {}
+            images_by_group[image_group][image_name] = result
+    return json.dumps({"images": images_by_name, "images-by-group": images_by_group}, indent=4)
+
+
 def _create(args) -> None:
     """
     Create images based on the given configuration and write json
@@ -43,11 +61,12 @@ def _create(args) -> None:
     ctx = Context(args.config, args.config_mapping)
     s3 = S3(ctx)
     s3.upload_file(ctx.conf["source"]["path"], ctx.conf["source"]["architecture"])
-    images: Dict[str, Dict[str, str]] = dict()
+    images = []
     for image_name, image in _images_filtered(ctx, args.group):
         res = image.create()
-        images[image_name] = res
-    args.output.write((json.dumps({"images": images}, indent=4)))
+        images.append((image_name, image, res))
+
+    args.output.write((_images_json(images, args.group)))
 
 
 def _list(args) -> None:
@@ -56,11 +75,12 @@ def _list(args) -> None:
     data to the given output
     """
     ctx = Context(args.config, args.config_mapping)
-    images: Dict[str, Dict[str, str]] = dict()
+    images = []
     for image_name, image in _images_filtered(ctx, args.group):
         res = image.list()
-        images[image_name] = res
-    args.output.write((json.dumps({"images": images}, indent=4)))
+        images.append((image_name, image, res))
+
+    args.output.write((_images_json(images, args.group)))
 
 
 def _verify(args) -> None:

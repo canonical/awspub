@@ -18,36 +18,38 @@ Calling now `awspub` to publish the image with the name `my-custom-image`.
   {
     "images": {
       "my-custom-image": {
-        "ap-south-2": "ami-09559735ad8b1761d",
-        "ap-south-1": "ami-02e2094cfd8b42949",
-        "eu-south-1": "ami-06cfa6dcd995d5150",
-        "eu-south-2": "ami-01d97f93afb5e98a2",
-        "me-central-1": "ami-05a0d68fe810e87e4",
-        "il-central-1": "ami-072764990baa35777",
-        "ca-central-1": "ami-0759edbde42f0a949",
-        "eu-central-1": "ami-0f4de621d30b1b0c2",
-        "eu-central-2": "ami-05f98e7422d7f404f",
-        "us-west-1": "ami-05746ce8a07b4c85e",
-        "us-west-2": "ami-0d823cf81bf9bf104",
-        "af-south-1": "ami-0e1a9da16c0d961f1",
-        "eu-north-1": "ami-0433695e2c7f30543",
-        "eu-west-3": "ami-047e60506ddc081f4",
-        "eu-west-2": "ami-0788cc3de6c23ec30",
-        "eu-west-1": "ami-0f6ae173f20f3ea90",
-        "ap-northeast-3": "ami-068b9688c5dfd6849",
-        "ap-northeast-2": "ami-0263f347b044130f0",
-        "me-south-1": "ami-0eb49224ec76b84a4",
-        "ap-northeast-1": "ami-0ec9a6c229f99542b",
-        "sa-east-1": "ami-034ef8539bd913dab",
-        "ap-east-1": "ami-0d591e1a25fc8a3fc",
-        "ap-southeast-1": "ami-056f8946746cbc928",
-        "ap-southeast-2": "ami-08171f5e219711961",
-        "ap-southeast-3": "ami-03719171326b5b50b",
-        "ap-southeast-4": "ami-05e7e801da60f4054",
-        "us-east-1": "ami-06e2de427bb61cdb8",
-        "us-east-2": "ami-011d41b2eeb9135bd"
+        "ap-south-2": "ami-015fa46e6ec690c8e",
+        "ap-south-1": "ami-0fd9238a64ea231d0",
+        "eu-south-1": "ami-0cbb4771743cc81fe",
+        "eu-south-2": "ami-0067ee557befd09c2",
+        "me-central-1": "ami-023fa019e0ce98e91",
+        "il-central-1": "ami-092d3f2a7677b8cf1",
+        "ca-central-1": "ami-0d2e897cd1ebecc45",
+        "eu-central-1": "ami-0b9ed498e040c69e2",
+        "eu-central-2": "ami-0fb0f61690e55ab8e",
+        "us-west-1": "ami-069c013403cc15c2f",
+        "us-west-2": "ami-06f9d32912a83571b",
+        "af-south-1": "ami-0371f67e8905c045a",
+        "eu-north-1": "ami-00710b821b31f5c78",
+        "eu-west-3": "ami-08b74828e79d0a405",
+        "eu-west-2": "ami-0f6f9c073bdb7b731",
+        "eu-west-1": "ami-0a07629b25777bf07",
+        "ap-northeast-3": "ami-07d680c934126a92b",
+        "ap-northeast-2": "ami-01fa9f4862d957b59",
+        "me-south-1": "ami-0827faef233b14a29",
+        "ap-northeast-1": "ami-0d119806827c3af22",
+        "sa-east-1": "ami-07f8dfef0a8855f06",
+        "ap-east-1": "ami-047cb2feb00bfc834",
+        "ca-west-1": "ami-061003b943c2d6be8",
+        "ap-southeast-1": "ami-0a2ca6ffb79999bb5",
+        "ap-southeast-2": "ami-0a74f3afdd309dbf2",
+        "ap-southeast-3": "ami-091f9d0adaa612bfb",
+        "ap-southeast-4": "ami-0ccc7ff1fcaf16948",
+        "us-east-1": "ami-0c470d0e3eaf16e67",
+        "us-east-2": "ami-02a7417ff5d866f4b"
       }
-    }
+    },
+    "images-by-group": {}
   }
 
 The output shows the published image IDs for each region. Those images are not
@@ -74,12 +76,13 @@ Running `awspub` now will publish 2 images in 2 different regions.
   {
     "images": {
       "my-custom-image": {
-        "eu-central-1": "ami-0f4de621d30b1b0c2"
+        "eu-central-1": "ami-0b9ed498e040c69e2"
       },
       "my-custom-image-2": {
-        "eu-central-2": "ami-0e2350a74c9e6e5c4"
+        "eu-central-2": "ami-03889118047373658"
       }
-    }
+    },
+    "images-by-group": {}
   }
 
 Parameter substitution
@@ -109,7 +112,8 @@ Using both together now with `awspub`:
       "my-custom-image-20171022": {
         "eu-central-1": "ami-0df443d5919e31d1b"
       }
-    }
+    },
+    "images-by-group": {}
   }
 
 
@@ -128,11 +132,18 @@ images this command should operate on:
 
 .. code-block:: shell
 
-  awspub --log-file awspub.log create configyaml --group group1
+  awspub --log-file awspub.log create config.yaml --group group1
   {
     "images": {
       "my-custom-image-1": {
         "us-west-1": "ami-09461116d07dd6604"
+      }
+    },
+    "images-by-group": {
+      "group1": {
+        "my-custom-image-1": {
+          "us-west-1": "ami-09461116d07dd6604"
+        }
       }
     }
   }
@@ -144,9 +155,16 @@ images this command should operate on:
         "us-east-1": "ami-018539227554e51fe",
         "ca-central-1": "ami-071d3602417c28201"
       }
+    },
+    "images-by-group": {
+      "group2": {
+        "my-custom-image-2": {
+          "us-east-1": "ami-018539227554e51fe",
+          "ca-central-1": "ami-071d3602417c28201"
+        }
+      }
     }
   }
-
 
 So the first command only works with images defined in `group1` while the second command only with
 images defined within `group2`.
