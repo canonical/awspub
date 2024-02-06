@@ -51,6 +51,7 @@ class ConfigImageModel(BaseModel):
     tpm_support: Optional[Literal["v2.0"]] = Field(
         description="Optional TPM support. If this is set, 'boot_mode' must be 'uefi'", default=None
     )
+    imds_support: Optional[Literal["v2.0"]] = Field(description="Optional IMDS support", default=None)
     share: Optional[List[str]] = Field(
         description="Optional list of account IDs the image and snapshot will be shared with", default=None
     )

@@ -329,6 +329,9 @@ class Image:
                 if self.conf["tpm_support"]:
                     register_image_kwargs["TpmSupport"] = self.conf["tpm_support"]
 
+                if self.conf["imds_support"]:
+                    register_image_kwargs["ImdsSupport"] = self.conf["imds_support"]
+
                 if self.conf["uefi_data"]:
                     with open(self.conf["uefi_data"], "r") as f:
                         uefi_data = f.read()
