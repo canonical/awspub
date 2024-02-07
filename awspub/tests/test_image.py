@@ -279,10 +279,10 @@ def test_image__tags(imagename, expected_tags):
 @pytest.mark.parametrize(
     "available_images,expected",
     [
-        # image not available
-        ([{"Name": "test-image-6", "ImageId": "ami-123"}], {"eu-central-1": "ami-123"}),
         # image available
-        ([], {"eu-central-1": None}),
+        ([{"Name": "test-image-6", "ImageId": "ami-123"}], {"eu-central-1": image._ImageInfo("ami-123", None)}),
+        # image not available
+        ([], {}),
     ],
 )
 def test_image_list(available_images, expected):
@@ -295,3 +295,36 @@ def test_image_list(available_images, expected):
         ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, "test-image-6")
         assert img.list() == expected
+
+
+def test_image_create_existing():
+    """
+    Test the create() method for a given image that already exist
+    """
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+        instance.describe_snapshots.return_value = {"Snapshots": [{"SnapshotId": "snap-123"}]}
+        instance.describe_images.return_value = {
+            "Images": [
+                {
+                    "Name": "test-image-6",
+                    "ImageId": "ami-123",
+                    "RootDeviceName": "/dev/sda1",
+                    "BlockDeviceMappings": [
+                        {
+                            "DeviceName": "/dev/sda1",
+                            "Ebs": {
+                                "DeleteOnTermination": True,
+                                "SnapshotId": "snap-123",
+                            },
+                        },
+                    ],
+                }
+            ]
+        }
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        img = image.Image(ctx, "test-image-6")
+        assert img.create() == {"eu-central-1": image._ImageInfo(image_id="ami-123", snapshot_id="snap-123")}
+        # register and create_tags shouldn't be called given that the image was already there
+        assert not instance.register_image.called
+        assert not instance.create_tags.called
