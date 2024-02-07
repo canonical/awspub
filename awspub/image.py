@@ -124,35 +124,35 @@ class Image:
             tags.append({"Key": name, "Value": value})
         return tags
 
-    def _share(self, images: Dict[str, str], snapshots: Dict[str, str]):
+    def _share(self, share_conf: List[str], images: Dict[str, _ImageInfo]):
         """
         Share images with accounts
 
-        :param images: a dict of images with key=region and value=image-id
-        :type images: Dict[str, str]
-        :param snapshots: a dict of snapshots with key=region and value=snapshot-id
-        :type snapshots: Dict[str, str]
+        :param share_conf: the share configuration. eg. self.conf["share_create"]
+        :type share_conf: List[str]
+        :param images: a Dict with region names as keys and _ImageInfo objects as values
+        :type images: Dict[str, _ImageInfo]
         """
-        if not self.conf["share"]:
-            return
+        share_list: List[Dict[str, str]] = [{"UserId": user_id} for user_id in share_conf]
 
-        share_list = [{"UserId": user_id} for user_id in self.conf["share"]]
-
-        for region, image_id in images.items():
-            ec2client_image: EC2Client = boto3.client("ec2", region_name=region)
-            ec2client_image.modify_image_attribute(
+        for region, image_info in images.items():
+            ec2client: EC2Client = boto3.client("ec2", region_name=region)
+            # modify image permissions
+            ec2client.modify_image_attribute(
                 Attribute="LaunchPermission",
-                ImageId=image_id,
+                ImageId=image_info.image_id,
                 LaunchPermission={"Add": share_list},  # type: ignore
             )
-        for region, snapshot_id in snapshots.items():
-            ec2client_snapshot: EC2Client = boto3.client("ec2", region_name=region)
-            ec2client_snapshot.modify_snapshot_attribute(
-                Attribute="createVolumePermission",
-                SnapshotId=snapshot_id,
-                CreateVolumePermission={"Add": share_list},  # type: ignore
-            )
-        logger.info(f"shared images & snapshots with '{self.conf['share']}'")
+
+            # modify snapshot permissions
+            if image_info.snapshot_id:
+                ec2client.modify_snapshot_attribute(
+                    Attribute="createVolumePermission",
+                    SnapshotId=image_info.snapshot_id,
+                    CreateVolumePermission={"Add": share_list},  # type: ignore
+                )
+
+        logger.info(f"shared images & snapshots with '{share_conf}'")
 
     def _get_root_device_snapshot_id(self, image):
         """
@@ -245,30 +245,30 @@ class Image:
                     ec2client_region.deregister_image(ImageId=image_info.image_id)
                     logger.info(f"{self.image_name} in {region} ({image_info.image_id}) deleted")
 
-    def list(self) -> Dict[str, Optional[str]]:
+    def list(self) -> Dict[str, _ImageInfo]:
         """
         Get image based on the available configuration
         This doesn't change anything - it just tries to get the available image
         for the different configured regions
-        :return: a Dict with region names as keys and optional image/AMI Ids as values
-        :rtype: Dict[str, Optional[str]]
+        :return: a Dict with region names as keys and _ImageInfo objects as values
+        :rtype: Dict[str, _ImageInfo]
         """
-        image_ids: Dict[str, Optional[str]] = dict()
+        images: Dict[str, _ImageInfo] = dict()
         for region in self.image_regions:
             ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
             image_info: Optional[_ImageInfo] = self._get(ec2client_region)
             if image_info:
-                image_ids[region] = image_info.image_id
+                images[region] = image_info
             else:
-                image_ids[region] = None
-        return image_ids
+                logger.warning(f"image {self.image_name} not available in region {region}")
+        return images
 
-    def create(self) -> Dict[str, str]:
+    def create(self) -> Dict[str, _ImageInfo]:
         """
         Get or create a image based on the available configuration
 
-        :return: a Dict with region names as keys and image/AMI Ids as values
-        :rtype: Dict[str, str]
+        :return: a Dict with region names as keys and _ImageInfo objects as values
+        :rtype: Dict[str, _ImageInfo]
         """
         # this **must** be the region that is used for S3
         ec2client: EC2Client = boto3.client("ec2", region_name=self._s3.bucket_region)
@@ -281,7 +281,7 @@ class Image:
             self.snapshot_name, self._s3.bucket_region, self.image_regions
         )
 
-        image_ids: Dict[str, str] = dict()
+        images: Dict[str, _ImageInfo] = dict()
         for region in self.image_regions:
             ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
             image_info: Optional[_ImageInfo] = self._get(ec2client_region)
@@ -297,7 +297,7 @@ class Image:
                         f"image with name '{self.image_name}' already exists ({image_info.image_id}) "
                         f"in region {ec2client_region.meta.region_name}"
                     )
-                image_ids[region] = image_info.image_id
+                images[region] = image_info
             else:
                 logger.info(
                     f"creating image with name '{self.image_name}' in "
@@ -342,23 +342,27 @@ class Image:
 
                 resp = ec2client_region.register_image(**register_image_kwargs)
                 ec2client_region.create_tags(Resources=[resp["ImageId"]], Tags=self._tags)
-                image_ids[region] = resp["ImageId"]
+                images[region] = _ImageInfo(resp["ImageId"], snapshot_ids[region])
 
         # wait for the images
-        logger.info(f"Waiting for {len(image_ids)} images to be ready the regions ...")
-        for region, image_id in image_ids.items():
+        logger.info(f"Waiting for {len(images)} images to be ready the regions ...")
+        for region, image_info in images.items():
             ec2client_region_wait: EC2Client = boto3.client("ec2", region_name=region)
-            logger.info(f"Waiting for {image_id} in {ec2client_region_wait.meta.region_name} to exist/be available ...")
+            logger.info(
+                f"Waiting for {image_info.image_id} in {ec2client_region_wait.meta.region_name} "
+                "to exist/be available ..."
+            )
             waiter_exists = ec2client_region_wait.get_waiter("image_exists")
-            waiter_exists.wait(ImageIds=[image_id])
+            waiter_exists.wait(ImageIds=[image_info.image_id])
             waiter_available = ec2client_region_wait.get_waiter("image_available")
-            waiter_available.wait(ImageIds=[image_id])
-        logger.info(f"{len(image_ids)} images are ready")
+            waiter_available.wait(ImageIds=[image_info.image_id])
+        logger.info(f"{len(images)} images are ready")
 
         # share
-        self._share(image_ids, snapshot_ids)
+        if self.conf["share"]:
+            self._share(self.conf["share"], images)
 
-        return image_ids
+        return images
 
     def public(self) -> None:
         """
@@ -377,6 +381,7 @@ class Image:
 
         # do the publication
         logger.info(f"Make image {self.image_name} in {len(self.image_regions)} regions public ...")
+
         for region in self.image_regions:
             ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
             image_info: Optional[_ImageInfo] = self._get(ec2client_region)
@@ -391,6 +396,7 @@ class Image:
                         ],
                     },
                 )
+                logger.info(f"image {image_info.image_id} in region {region} public now")
 
                 if image_info.snapshot_id:
                     ec2client_region.modify_snapshot_attribute(
@@ -401,11 +407,16 @@ class Image:
                         ],
                         OperationType="add",
                     )
-
-                logger.info(
-                    f"image {image_info.image_id} and snapshot {image_info.snapshot_id} are public "
-                    f"in region {region} now"
-                )
+                    logger.info(
+                        f"snapshot {image_info.snapshot_id} ({image_info.image_id}) in region {region} public now"
+                    )
+                else:
+                    logger.error(
+                        f"snapshot for image {self.image_name} ({image_info.image_id}) not available "
+                        f"in region {region}. can not make public"
+                    )
+            else:
+                logger.error(f"image {self.image_name} not available in region {region}. can not make public")
 
     def verify(self) -> Dict[str, List[str]]:
         """
