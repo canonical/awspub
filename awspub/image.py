@@ -388,6 +388,7 @@ class Image:
                         ],
                     },
                 )
+                logger.info(f"image {image_info.image_id} in region {region} public now")
 
                 if image_info.snapshot_id:
                     ec2client_region.modify_snapshot_attribute(
@@ -398,11 +399,16 @@ class Image:
                         ],
                         OperationType="add",
                     )
-
-                logger.info(
-                    f"image {image_info.image_id} and snapshot {image_info.snapshot_id} are public "
-                    f"in region {region} now"
-                )
+                    logger.info(
+                        f"snapshot {image_info.snapshot_id} ({image_info.image_id}) in region {region} public now"
+                    )
+                else:
+                    logger.error(
+                        f"snapshot for image {self.image_name} ({image_info.image_id}) not available "
+                        f"in region {region}. can not make public"
+                    )
+            else:
+                logger.error(f"image {self.image_name} not available in region {region}. can not make public")
 
     def verify(self) -> Dict[str, List[str]]:
         """
