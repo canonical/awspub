@@ -5,7 +5,7 @@ import sys
 import json
 import logging
 import argparse
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional, List, Tuple, Iterator
 
 from awspub.context import Context
 from awspub.s3 import S3
@@ -15,7 +15,7 @@ from awspub.image import Image
 logger = logging.getLogger(__name__)
 
 
-def _images_filtered(context: Context, group: Optional[str]):
+def _images_filtered(context: Context, group: Optional[str]) -> Iterator[Tuple[str, Image]]:
     """
     Filter the images from ctx based on the given args
     :param context: the context
