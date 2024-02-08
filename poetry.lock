@@ -144,6 +144,7 @@ mypy-boto3-marketplace-catalog = {version = ">=1.34.0,<1.35.0", optional = true,
 mypy-boto3-rds = {version = ">=1.34.0,<1.35.0", optional = true, markers = "extra == \"essential\""}
 mypy-boto3-s3 = {version = ">=1.34.0,<1.35.0", optional = true, markers = "extra == \"essential\""}
 mypy-boto3-sqs = {version = ">=1.34.0,<1.35.0", optional = true, markers = "extra == \"essential\""}
+mypy-boto3-ssm = {version = ">=1.34.0,<1.35.0", optional = true, markers = "extra == \"ssm\""}
 types-s3transfer = "*"
 typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
@@ -1128,6 +1129,20 @@ files = [
 typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
+name = "mypy-boto3-ssm"
+version = "1.34.32"
+description = "Type annotations for boto3.SSM 1.34.32 service generated with mypy-boto3-builder 7.23.1"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "mypy-boto3-ssm-1.34.32.tar.gz", hash = "sha256:1d78f8bfb85d4bfb820046b7c864b75e2ef1a04ea7fed88b4d6d6abf252077e6"},
+    {file = "mypy_boto3_ssm-1.34.32-py3-none-any.whl", hash = "sha256:185e46fa5996843e34a5c7fb5e2129df57a37fca3187daa1ab81996d5633c772"},
+]
+
+[package.dependencies]
+typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
+
+[[package]]
 name = "mypy-extensions"
 version = "1.0.0"
 description = "Type system extensions for programs checked with the mypy type checker."
@@ -1756,4 +1771,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "d88d8faaf5f70e085b6db1b1c568d9501cc59cf3b737226954a095dd3fa5ff60"
+content-hash = "15298fda9fb61806eed5ad4f18b518dbaafa8161dcd0ce54da831f35192b58c4"

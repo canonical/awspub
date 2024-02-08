@@ -119,14 +119,14 @@ def test_image___get_root_device_snapshot_id(root_device_name, block_device_mapp
 
 
 @pytest.mark.parametrize(
-    "imagename,called_mod_image,called_mod_snapshot,called_start_change_set",
+    "imagename,called_mod_image,called_mod_snapshot,called_start_change_set,called_put_parameter",
     [
-        ("test-image-6", True, True, False),
-        ("test-image-7", False, False, False),
-        ("test-image-8", True, True, True),
+        ("test-image-6", True, True, False, False),
+        ("test-image-7", False, False, False, False),
+        ("test-image-8", True, True, True, True),
     ],
 )
-def test_image_public(imagename, called_mod_image, called_mod_snapshot, called_start_change_set):
+def test_image_public(imagename, called_mod_image, called_mod_snapshot, called_start_change_set, called_put_parameter):
     """
     Test the public() for a given image
     """
@@ -150,12 +150,14 @@ def test_image_public(imagename, called_mod_image, called_mod_snapshot, called_s
                 }
             ]
         }
+        instance.get_parameters.return_value = {"Parameters": []}
         ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, imagename)
         img.public()
         assert instance.modify_image_attribute.called == called_mod_image
         assert instance.modify_snapshot_attribute.called == called_mod_snapshot
         assert instance.start_change_set.called == called_start_change_set
+        assert instance.put_parameter.called == called_put_parameter
 
 
 def test_image__get_zero_images():
@@ -330,3 +332,47 @@ def test_image_create_existing():
         # register and create_tags shouldn't be called given that the image was already there
         assert not instance.register_image.called
         assert not instance.create_tags.called
+
+
+@pytest.mark.parametrize(
+    "imagename,describe_images,get_parameters,get_parameters_called,put_parameter_called",
+    [
+        # no image, no parameters (this should actually never happen but test it anyway)
+        ("test-image-8", [], [], False, False),
+        # with image, no parameter, no overwrite
+        ("test-image-8", [{"Name": "test-image-8", "ImageId": "ami-123"}], [], True, True),
+        # with image, with parameter, no overwrite
+        (
+            "test-image-8",
+            [{"Name": "test-image-8", "ImageId": "ami-123"}],
+            [{"Name": "/awspub-test/param1", "Value": "ami-123"}],
+            True,
+            False,
+        ),
+        # with image, no parameter, with overwrite
+        ("test-image-9", [{"Name": "test-image-8", "ImageId": "ami-123"}], [], False, True),
+        # with image, with parameter, with overwrite
+        (
+            "test-image-9",
+            [{"Name": "test-image-8", "ImageId": "ami-123"}],
+            [{"Name": "/awspub-test/param1", "Value": "ami-123"}],
+            False,
+            True,
+        ),
+    ],
+)
+def test_image__put_ssm_parameters(
+    imagename, describe_images, get_parameters, get_parameters_called, put_parameter_called
+):
+    """
+    Test the _put_ssm_parameters() method
+    """
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+        instance.describe_images.return_value = {"Images": describe_images}
+        instance.get_parameters.return_value = {"Parameters": get_parameters}
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        img = image.Image(ctx, imagename)
+        img._put_ssm_parameters()
+        assert instance.get_parameters.called == get_parameters_called
+        assert instance.put_parameter.called == put_parameter_called

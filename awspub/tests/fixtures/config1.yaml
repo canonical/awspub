@@ -98,6 +98,22 @@ awspub:
             ip_ranges:
               - "0.0.0.0/0"
             to_port: 22
+      ssm_parameter:
+        -
+          name: /test/image
+        -
+          name: /test/another-image
+    "test-image-9":
+      boot_mode: "uefi"
+      description: |
+        A test image without a separate snapshot but multiple billing products
+      regions:
+        - "eu-central-1"
+        - "us-east-1"
+      ssm_parameter:
+        -
+          name: /awspub-test/param2
+          allow_overwrite: true
 
   tags:
     name: "foobar"

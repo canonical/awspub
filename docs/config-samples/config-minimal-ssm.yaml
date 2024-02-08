@@ -1,0 +1,20 @@
+awspub:
+  source:
+    path: "image.vmdk"
+    architecture: "x86_64"
+  s3:
+    bucket_name: "awspub-toabctl"
+    bucket_region: "eu-central-1"
+  images:
+    "my-custom-image":
+      boot_mode: "uefi-preferred"
+      ssm_parameter:
+        -
+          name: "/awspub-test/my-custom-image/$version"
+          description: |
+            Version $version of my-custom-image
+        -
+          name: "/awspub-test/my-custom-image/latest"
+          allow_overwrite: true
+          description: |
+            always latest version of my-custom-image

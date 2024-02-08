@@ -24,7 +24,7 @@ python = "^3.9"
 boto3 = "*"
 pydantic = "^2"
 pyyaml = "*"
-boto3-stubs = {extras = ["essential", "marketplace-catalog"], version = "^1.28.83"}
+boto3-stubs = {extras = ["essential", "marketplace-catalog", "ssm"], version = "^1.28.83"}
 autodoc-pydantic = "^2.0.1"
 
 
