@@ -19,3 +19,11 @@ use for config validation.
 .. autopydantic_model:: awspub.configmodels.ConfigImageModel
    :model-show-json: True
    :model-show-config-summary: True
+
+.. autopydantic_model:: awspub.configmodels.ConfigImageMarketplaceModel
+   :model-show-json: True
+   :model-show-config-summary: True
+
+.. autopydantic_model:: awspub.configmodels.ConfigImageMarketplaceSecurityGroupModel
+   :model-show-json: True
+   :model-show-config-summary: True

@@ -27,9 +27,10 @@ class ImageMarketplace:
         """
         return self._ctx.conf["images"][self._image_name]["marketplace"]
 
-    def request_new_version(self, image_id: str):
+    def request_new_version(self, image_id: str) -> None:
         """
         Request a new Marketplace version for the given image Id
+
         :param image_id: an image Id (in the format 'ami-123')
         :type image_id: str
         """
@@ -45,6 +46,7 @@ class ImageMarketplace:
         resp = self._mpclient.start_change_set(
             Catalog="AWSMarketplace",
             ChangeSet=changeset,
+            ChangeSetTags=self._ctx.tags,
             ChangeSetName=f"New version request for {self.conf['version_title']}",
         )
         logger.info(
@@ -52,10 +54,11 @@ class ImageMarketplace:
             f"{self.conf['entity_id']} requested (changeset-id: {resp['ChangeSetId']})"
         )
 
-    def _request_new_version_changeset(self, image_id: str):
+    def _request_new_version_changeset(self, image_id: str) -> None:
         """
         Create a changeset structure for a new AmiProduct version
         See https://docs.aws.amazon.com/marketplace-catalog/latest/api-reference/ami-products.html#ami-add-version
+
         :param image_id: an image Id (in the format 'ami-123')
         :type image_id: str
         :return: A changeset structure to request a new version

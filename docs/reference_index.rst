@@ -12,3 +12,6 @@ Reference
 
 .. automodule:: awspub.image
      :members:
+
+.. automodule:: awspub.image_marketplace
+     :members:
