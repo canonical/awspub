@@ -45,6 +45,7 @@ class ImageMarketplace:
         resp = self._mpclient.start_change_set(
             Catalog="AWSMarketplace",
             ChangeSet=changeset,
+            ChangeSetTags=self._ctx.tags,
             ChangeSetName=f"New version request for {self.conf['version_title']}",
         )
         logger.info(
