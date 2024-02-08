@@ -25,6 +25,45 @@ class ConfigSourceModel(BaseModel):
     architecture: Literal["x86_64", "arm64"] = Field(description="The architecture of the given .vmdk image")
 
 
+class ConfigImageMarketplaceSecurityGroupModel(BaseModel):
+    """
+    Image/AMI Marketplace specific configuration for a security group
+    """
+
+    from_port: int = Field(description="The source port")
+    ip_protocol: Literal["tcp", "udp"] = Field(description="The IP protocol (either 'tcp' or 'udp')")
+    ip_ranges: List[str] = Field(description="IP ranges to allow, in CIDR format (eg. '192.0.2.0/24')")
+    to_port: int = Field(description="The destination port")
+
+
+class ConfigImageMarketplaceModel(BaseModel):
+    """
+    Image/AMI Marketplace specific configuration to request new Marketplace versions
+    See https://docs.aws.amazon.com/marketplace-catalog/latest/api-reference/ami-products.html
+    for further information
+    """
+
+    entity_id: str = Field(description="The entity ID (product ID)")
+    # see https://docs.aws.amazon.com/marketplace/latest/userguide/ami-single-ami-products.html#single-ami-marketplace-ami-access  # noqa:E501
+    access_role_arn: str = Field(
+        description="IAM role Amazon Resource Name (ARN) used by AWS Marketplace to access the provided AMI"
+    )
+    version_title: str = Field(description="The version title. Must be unique across the product")
+    release_notes: str = Field(description="The release notes")
+    user_name: str = Field(description="The login username to access the operating system")
+    scanning_port: int = Field(description="Port to access the operating system (default: 22)", default=22)
+    os_name: str = Field(description="Operating system name displayed to Marketplace buyers")
+    os_version: str = Field(description="Operating system version displayed to Marketplace buyers")
+    usage_instructions: str = Field(
+        description=" Instructions for using the AMI, or a link to more information about the AMI"
+    )
+    recommended_instance_type: str = Field(
+        description="The instance type that is recommended to run the service with the AMI and is the "
+        "default for 1-click installs of your service"
+    )
+    security_groups: Optional[List[ConfigImageMarketplaceSecurityGroupModel]]
+
+
 class ConfigImageModel(BaseModel):
     """
     Image/AMI configuration.
@@ -60,6 +99,9 @@ class ConfigImageModel(BaseModel):
     )
     public: Optional[bool] = Field(
         description="Optional boolean field indicates if the image should be public", default=False
+    )
+    marketplace: Optional[ConfigImageMarketplaceModel] = Field(
+        description="Optional structure containing Marketplace related configuration", default=None
     )
     groups: Optional[List[str]] = Field(description="Optional list of groups this image is part of", default=[])
     tags: Optional[Dict[str, str]] = Field(description="Optional Tags to apply to this image only", default={})

@@ -1,0 +1,29 @@
+awspub:
+  source:
+    path: "image.vmdk"
+    architecture: "x86_64"
+  s3:
+    bucket_name: "awspub-toabctl"
+    bucket_region: "us-east-1"
+  images:
+    "my-custom-image":
+      boot_mode: "uefi-preferred"
+      marketplace:
+        entity_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+        access_role_arn: "arn:aws:iam::xxxxxxxxxxxx:role/AWSMarketplaceAccess"
+        version_title: "1.0.0"
+        release_notes: "N/A"
+        user_name: "ubuntu"
+        scanning_port: 22
+        os_name: "UBUNTU"
+        os_version: "24.04 LTS"
+        usage_instructions: |
+          You can use this custom image
+        recommended_instance_type: "m6.large"
+        security_groups:
+          -
+            from_port: 22
+            ip_protocol: "tcp"
+            ip_ranges:
+              - "0.0.0.0/0"
+            to_port: 22

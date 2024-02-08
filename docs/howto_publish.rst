@@ -189,6 +189,21 @@ The the image needs to be created and published:
   awspub create config.yaml
   awspub public config.yaml
 
+AWS Marketplace
+~~~~~~~~~~~~~~~
+
+It's possible to publish to `AWS Marketplace <https://docs.aws.amazon.com/marketplace/latest/userguide/user-guide-for-sellers.html>`_ if a entity of a `Single-AMI product <https://docs.aws.amazon.com/marketplace/latest/userguide/ami-single-ami-products.html>`_ already exists, an access role arn is available and an AMI exists in the `us-east-1` region. 
+
+.. literalinclude:: config-samples/config-minimal-marketplace.yaml
+   :language: yaml
+
+The image needs to be created first and the `public` command will request a new Marketplace version
+for the given entity:
+
+.. code-block:: shell
+
+  awspub create config.yaml
+  awspub public config.yaml
 
 Resource tags
 ~~~~~~~~~~~~~
