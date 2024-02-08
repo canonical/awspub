@@ -119,13 +119,14 @@ def test_image___get_root_device_snapshot_id(root_device_name, block_device_mapp
 
 
 @pytest.mark.parametrize(
-    "imagename,called",
+    "imagename,called_mod_image,called_mod_snapshot,called_start_change_set",
     [
-        ("test-image-6", True),
-        ("test-image-7", False),
+        ("test-image-6", True, True, False),
+        ("test-image-7", False, False, False),
+        ("test-image-8", True, True, True),
     ],
 )
-def test_image_public(imagename, called):
+def test_image_public(imagename, called_mod_image, called_mod_snapshot, called_start_change_set):
     """
     Test the public() for a given image
     """
@@ -152,8 +153,9 @@ def test_image_public(imagename, called):
         ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, imagename)
         img.public()
-        assert instance.modify_image_attribute.called == called
-        assert instance.modify_snapshot_attribute.called == called
+        assert instance.modify_image_attribute.called == called_mod_image
+        assert instance.modify_snapshot_attribute.called == called_mod_snapshot
+        assert instance.start_change_set.called == called_start_change_set
 
 
 def test_image__get_zero_images():

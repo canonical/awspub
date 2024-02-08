@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from awspub.context import Context
 from awspub.snapshot import Snapshot
+from awspub.image_marketplace import ImageMarketplace
 from awspub.s3 import S3
 from awspub import exceptions
 
@@ -208,6 +209,48 @@ class Image:
                 f"name {self.image_name} in region {ec2client.meta.region_name}. There should be only 1."
             )
 
+    def _public(self) -> None:
+        """
+        Make image and underlying root device snapshot public
+        """
+        logger.info(f"Make image {self.image_name} in {len(self.image_regions)} regions public ...")
+
+        for region in self.image_regions:
+            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+            if image_info:
+                ec2client_region.modify_image_attribute(
+                    ImageId=image_info.image_id,
+                    LaunchPermission={
+                        "Add": [
+                            {
+                                "Group": "all",
+                            },
+                        ],
+                    },
+                )
+                logger.info(f"image {image_info.image_id} in region {region} public now")
+
+                if image_info.snapshot_id:
+                    ec2client_region.modify_snapshot_attribute(
+                        SnapshotId=image_info.snapshot_id,
+                        Attribute="createVolumePermission",
+                        GroupNames=[
+                            "all",
+                        ],
+                        OperationType="add",
+                    )
+                    logger.info(
+                        f"snapshot {image_info.snapshot_id} ({image_info.image_id}) in region {region} public now"
+                    )
+                else:
+                    logger.error(
+                        f"snapshot for image {self.image_name} ({image_info.image_id}) not available "
+                        f"in region {region}. can not make public"
+                    )
+            else:
+                logger.error(f"image {self.image_name} not available in region {region}. can not make public")
+
     def cleanup(self) -> None:
         """
         Cleanup/delete the temporary images
@@ -366,57 +409,36 @@ class Image:
 
     def public(self) -> None:
         """
-        Make an image and the underlying snapshot public if the public flag is set in the config
-        Note: if public and temporary are both set, the image will **not** be made public
+        Handle all publication steps
+        - make image and underlying root device snapshot public if the public flag is set
+        - request a new marketplace version for the image in us-east-1 if the marketplace config is present
+        Note: if the temporary flag is set in the image, this method will do nothing
         Note: this command doesn't unpublish anything!
         """
-        if not self.conf["public"]:
-            logger.info(f"image {self.image_name} not marked as public. do not publish")
-            return
-
         # never publish temporary images
         if self.conf["temporary"]:
             logger.warning(f"image {self.image_name} marked as temporary. do not publish")
             return
 
-        # do the publication
-        logger.info(f"Make image {self.image_name} in {len(self.image_regions)} regions public ...")
+        # make snapshot and image public if requested in the image
+        if self.conf["public"]:
+            self._public()
+        else:
+            logger.info(f"image {self.image_name} not marked as public. do not publish")
 
-        for region in self.image_regions:
-            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
-            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+        # handle marketplace publication
+        if self.conf["marketplace"]:
+            logger.info(f"marketplace version request for {self.image_name}")
+            # image needs to be in us-east-1
+            ec2client: EC2Client = boto3.client("ec2", region_name="us-east-1")
+            image_info: Optional[_ImageInfo] = self._get(ec2client)
             if image_info:
-                ec2client_region.modify_image_attribute(
-                    ImageId=image_info.image_id,
-                    LaunchPermission={
-                        "Add": [
-                            {
-                                "Group": "all",
-                            },
-                        ],
-                    },
-                )
-                logger.info(f"image {image_info.image_id} in region {region} public now")
-
-                if image_info.snapshot_id:
-                    ec2client_region.modify_snapshot_attribute(
-                        SnapshotId=image_info.snapshot_id,
-                        Attribute="createVolumePermission",
-                        GroupNames=[
-                            "all",
-                        ],
-                        OperationType="add",
-                    )
-                    logger.info(
-                        f"snapshot {image_info.snapshot_id} ({image_info.image_id}) in region {region} public now"
-                    )
-                else:
-                    logger.error(
-                        f"snapshot for image {self.image_name} ({image_info.image_id}) not available "
-                        f"in region {region}. can not make public"
-                    )
+                im = ImageMarketplace(self._ctx, self.image_name)
+                im.request_new_version(image_info.image_id)
             else:
-                logger.error(f"image {self.image_name} not available in region {region}. can not make public")
+                logger.error(
+                    f"can not request marketplace version for {self.image_name} because no image found in us-east-1"
+                )
 
     def verify(self) -> Dict[str, List[str]]:
         """

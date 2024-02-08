@@ -69,6 +69,35 @@ awspub:
       tags:
         key2: name
         name: "not-foobar"
+    "test-image-8":
+      description: |
+        A test image without a separate snapshot but multiple billing products
+      boot_mode: "uefi-preferred"
+      regions:
+        - "eu-central-1"
+        - "us-east-1"
+      public: true
+      tags:
+        key1: value1
+      marketplace:
+        entity_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+        access_role_arn: "arn:aws:iam::xxxxxxxxxxxx:role/AWSMarketplaceAccess"
+        version_title: "1.0.0"
+        release_notes: "N/A"
+        user_name: "ubuntu"
+        scanning_port: 22
+        os_name: "UBUNTU"
+        os_version: "22.04"
+        usage_instructions: |
+          You can use me
+        recommended_instance_type: "m5.large"
+        security_groups:
+          -
+            from_port: 22
+            ip_protocol: "tcp"
+            ip_ranges:
+              - "0.0.0.0/0"
+            to_port: 22
 
   tags:
     name: "foobar"
