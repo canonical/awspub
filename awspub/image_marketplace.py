@@ -54,7 +54,7 @@ class ImageMarketplace:
             f"{self.conf['entity_id']} requested (changeset-id: {resp['ChangeSetId']})"
         )
 
-    def _request_new_version_changeset(self, image_id: str) -> None:
+    def _request_new_version_changeset(self, image_id: str):
         """
         Create a changeset structure for a new AmiProduct version
         See https://docs.aws.amazon.com/marketplace-catalog/latest/api-reference/ami-products.html#ami-add-version
