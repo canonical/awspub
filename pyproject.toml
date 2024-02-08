@@ -35,6 +35,7 @@ optional = true
 flake8 = "*"
 black = "*"
 pytest = "*"
+coverage = "^7.4.1"
 
 [tool.poetry.group.type]
 optional = true
