@@ -10,6 +10,7 @@ Only EBS backed images/AMIs are supported!
    :caption: Contents:
 
    howto_publish
+   architecture
    reference_index
    reference_config
 
