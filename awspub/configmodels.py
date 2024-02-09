@@ -64,6 +64,24 @@ class ConfigImageMarketplaceModel(BaseModel):
     security_groups: Optional[List[ConfigImageMarketplaceSecurityGroupModel]]
 
 
+class ConfigImageSSMParameterModel(BaseModel):
+    """
+    Image/AMI SSM specific configuration to push parameters of type `aws:ec2:image` to the parameter store
+    """
+
+    name: str = Field(
+        description="The fully qualified name of the parameter that you want to add to the system. "
+        "A parameter name must be unique within an Amazon Web Services Region"
+    )
+    description: Optional[str] = Field(
+        description="Information about the parameter that you want to add to the system", default=None
+    )
+    allow_overwrite: Optional[bool] = Field(
+        description="allow to overwrite an existing parameter. Useful for keep a 'latest' parameter (default: false)",
+        default=False,
+    )
+
+
 class ConfigImageModel(BaseModel):
     """
     Image/AMI configuration.
@@ -102,6 +120,11 @@ class ConfigImageModel(BaseModel):
     )
     marketplace: Optional[ConfigImageMarketplaceModel] = Field(
         description="Optional structure containing Marketplace related configuration", default=None
+    )
+    ssm_parameter: Optional[List[ConfigImageSSMParameterModel]] = Field(
+        description="Optional list of SSM parameter paths of type `aws:ec2:image` which will "
+        "be pushed to the parameter store",
+        default=None,
     )
     groups: Optional[List[str]] = Field(description="Optional list of groups this image is part of", default=[])
     tags: Optional[Dict[str, str]] = Field(description="Optional Tags to apply to this image only", default={})

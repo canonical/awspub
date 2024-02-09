@@ -1,4 +1,5 @@
 from mypy_boto3_ec2.client import EC2Client
+from mypy_boto3_ssm import SSMClient
 import hashlib
 import boto3
 import logging
@@ -208,6 +209,51 @@ class Image:
                 f"Found {len(images)} images ({', '.join(images)}) with "
                 f"name {self.image_name} in region {ec2client.meta.region_name}. There should be only 1."
             )
+
+    def _put_ssm_parameters(self) -> None:
+        """
+        Push the configured SSM parameters to the parameter store
+        """
+        logger.info(f"Pushing SSM parameters for image {self.image_name} in {len(self.image_regions)} regions ...")
+        for region in self.image_regions:
+            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+
+            # image in region not found
+            if not image_info:
+                logger.error(f"image {self.image_name} not available in region {region}. can not push SSM parameter")
+                continue
+
+            ssmclient_region: SSMClient = boto3.client("ssm", region_name=region)
+            # iterate over all defined parameters
+            for parameter in self.conf["ssm_parameter"]:
+                # if overwrite is not allowed, check if the parameter is already there and if so, do nothing
+                if not parameter["allow_overwrite"]:
+                    resp = ssmclient_region.get_parameters(Names=[parameter["name"]])
+                    if len(resp["Parameters"]) >= 1:
+                        # sanity check if the available parameter matches the value we would (but don't) push
+                        if resp["Parameters"][0]["Value"] != image_info.image_id:
+                            logger.warning(
+                                f"SSM parameter {parameter['name']} exists but value does not match "
+                                f"(found {resp['Parameters'][0]['Value']}; expected: {image_info.image_id}"
+                            )
+                        # parameter exists already and overwrite is not allowed so continue
+                        continue
+                # push parameter to store
+                ssmclient_region.put_parameter(
+                    Name=parameter["name"],
+                    Description=parameter.get("description", ""),
+                    Value=image_info.image_id,
+                    Type="String",
+                    Overwrite=parameter["allow_overwrite"],
+                    DataType="aws:ec2:image",
+                    # TODO: tags can't be used together with overwrite
+                    # Tags=self._ctx.tags,
+                )
+
+                logger.info(
+                    f"pushed SSM parameter {parameter['name']} with value {image_info.image_id} in region {region}"
+                )
 
     def _public(self) -> None:
         """
@@ -439,6 +485,10 @@ class Image:
                 logger.error(
                     f"can not request marketplace version for {self.image_name} because no image found in us-east-1"
                 )
+
+        # handle SSM parameter store
+        if self.conf["ssm_parameter"]:
+            self._put_ssm_parameters()
 
     def verify(self) -> Dict[str, List[str]]:
         """

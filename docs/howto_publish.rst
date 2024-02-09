@@ -205,6 +205,30 @@ for the given entity:
   awspub create config.yaml
   awspub public config.yaml
 
+SSM Parameter Store
+~~~~~~~~~~~~~~~~~~~
+
+It's possible to push information about published images to the `SSM Parameter Store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`_. That's
+useful eg. to have a common way to get the latest image Id on different
+regions. To push image information to the parameter store, the `ssm_paramter`
+configuration for each image must be filled:
+
+.. literalinclude:: config-samples/config-minimal-ssm.yaml
+   :language: yaml
+
+with a corresponding mapping file:
+
+.. literalinclude:: config-samples/config-minimal-ssm.yaml.mapping
+   :language: yaml
+
+Create the image and the `public` command will also push information to the parameter store:
+
+.. code-block:: shell
+
+  awspub create config.yaml --config-mapping config.yaml.mapping
+  awspub public config.yaml --config-mapping config.yaml.mapping
+
+
 Resource tags
 ~~~~~~~~~~~~~
 
