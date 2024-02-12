@@ -31,7 +31,7 @@ def _images_filtered(context: Context, group: Optional[str]) -> Iterator[Tuple[s
                 logger.info(f"skipping image {image_name} because not part of group {group}")
                 continue
 
-        logger.info(f"processing image {image_name} from group {group}")
+        logger.info(f"processing image {image_name} (group: {group})")
         yield image_name, image
 
 
