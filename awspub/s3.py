@@ -81,14 +81,45 @@ class S3:
         self._s3client.create_bucket(Bucket=self.bucket_name, CreateBucketConfiguration=location)
         logger.info(f"s3 bucket '{self.bucket_name}' created")
 
-    def upload_file(self, source_path: str, source_architecture: str):
+    def _upload_file(self, source_path: str) -> None:
         """
         Upload a given file to the bucket from context. The key name will be the sha256sum hexdigest of the file
 
         :param source_path: the path to the local file to upload (usually a .vmdk file)
         :type source_path: str
-        :param source_architecture: the architecture of the given source_path file
-        :type source_architecture: str
+        """
+        logger.info(
+            f"Starting to upload '{source_path}' in bucket '{self.bucket_name}' as key '{self._ctx.source_sha256}'"
+        )
+
+        self._s3client.upload_file(
+            source_path,
+            self.bucket_name,
+            self._ctx.source_sha256,
+            ExtraArgs={"ACL": "private", "ChecksumAlgorithm": "SHA256"},
+            Config=TransferConfig(multipart_chunksize=MULTIPART_CHUNK_SIZE),
+        )
+
+        self._s3client.put_object_tagging(
+            Bucket=self.bucket_name,
+            Key=self._ctx.source_sha256,
+            Tagging={
+                "TagSet": self._ctx.tags,
+            },
+        )
+
+        logger.info(
+            f"Upload of '{source_path}' to bucket '{self.bucket_name}' " f"as key '{self._ctx.source_sha256}' done"
+        )
+
+    def upload_file(self, source_path: str):
+        """
+        Upload a given file to the bucket from context. The key name will be the sha256sum hexdigest of the file.
+        If a file with that name already exist in the given bucket and the calculated sha256sum matches
+        the sha256sum from S3, nothing will be uploaded. Instead the existing file will be used.
+
+        :param source_path: the path to the local file to upload (usually a .vmdk file)
+        :type source_path: str
         """
         # make sure the bucket exists
         self._bucket_create()
@@ -116,26 +147,5 @@ class S3:
         except Exception:
             logging.debug(f"Can not find '{self._ctx.source_sha256}' in bucket '{self.bucket_name}'")
 
-        logger.info(
-            f"Starting to upload '{source_path}' in bucket '{self.bucket_name}' as key '{self._ctx.source_sha256}'"
-        )
-
-        self._s3client.upload_file(
-            source_path,
-            self.bucket_name,
-            self._ctx.source_sha256,
-            ExtraArgs={"ACL": "private", "ChecksumAlgorithm": "SHA256"},
-            Config=TransferConfig(multipart_chunksize=MULTIPART_CHUNK_SIZE),
-        )
-
-        self._s3client.put_object_tagging(
-            Bucket=self.bucket_name,
-            Key=self._ctx.source_sha256,
-            Tagging={
-                "TagSet": self._ctx.tags,
-            },
-        )
-
-        logger.info(
-            f"Upload of '{source_path}' to bucket '{self.bucket_name}' " f"as key '{self._ctx.source_sha256}' done"
-        )
+        # do the real upload
+        self._upload_file(source_path)
