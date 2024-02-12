@@ -61,7 +61,7 @@ def _create(args) -> None:
     """
     ctx = Context(args.config, args.config_mapping)
     s3 = S3(ctx)
-    s3.upload_file(ctx.conf["source"]["path"], ctx.conf["source"]["architecture"])
+    s3.upload_file(ctx.conf["source"]["path"])
     images: List[Tuple[str, Image, Dict[str, _ImageInfo]]] = []
     for image_name, image in _images_filtered(ctx, args.group):
         image_result: Dict[str, _ImageInfo] = image.create()

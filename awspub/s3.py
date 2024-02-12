@@ -112,7 +112,7 @@ class S3:
             f"Upload of '{source_path}' to bucket '{self.bucket_name}' " f"as key '{self._ctx.source_sha256}' done"
         )
 
-    def upload_file(self, source_path: str, source_architecture: str):
+    def upload_file(self, source_path: str):
         """
         Upload a given file to the bucket from context. The key name will be the sha256sum hexdigest of the file.
         If a file with that name already exist in the given bucket and the calculated sha256sum matches
@@ -120,8 +120,6 @@ class S3:
 
         :param source_path: the path to the local file to upload (usually a .vmdk file)
         :type source_path: str
-        :param source_architecture: the architecture of the given source_path file
-        :type source_architecture: str
         """
         # make sure the bucket exists
         self._bucket_create()
