@@ -1,7 +1,7 @@
 import hashlib
 import pathlib
 import logging
-import yaml
+from ruamel.yaml import YAML
 from string import Template
 from typing import Dict
 
@@ -22,11 +22,12 @@ class Context:
         self._conf = None
         self._conf_template_mapping_path = conf_template_mapping_path
         self._conf_template_mapping = {}
+        yaml = YAML(typ="safe")
 
         # read the config mapping first
         if self._conf_template_mapping_path:
             with open(self._conf_template_mapping_path, "r") as ctm:
-                self._conf_template_mapping = yaml.safe_load(ctm)
+                self._conf_template_mapping = yaml.load(ctm)
                 logger.debug(f"loaded config template mapping for substitution: {self._conf_template_mapping}")
 
         # read the config itself
@@ -34,7 +35,7 @@ class Context:
             template = Template(f.read())
             # substitute the values in the config with values from the config template mapping
             ft = template.substitute(**self._conf_template_mapping)
-            y = yaml.safe_load(ft)["awspub"]
+            y = yaml.load(ft)["awspub"]
             self._conf = ConfigModel(**y).model_dump()
             logger.debug(f"config loaded as: {self._conf}")
 

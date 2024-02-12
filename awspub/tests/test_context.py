@@ -1,6 +1,8 @@
 import pathlib
 import os
 import glob
+import pytest
+from ruamel.yaml.constructor import DuplicateKeyError
 
 from awspub import context
 
@@ -55,3 +57,11 @@ def test_context_with_docs_config_samples():
         else:
             mapping = None
         context.Context(os.path.join(config_samples_dir, f), mapping)
+
+
+def test_context_with_duplicate_image_name():
+    """
+    Create a context with a configuration file that contains a duplicate image name key
+    """
+    with pytest.raises(DuplicateKeyError):
+        context.Context(curdir / "fixtures/config3-duplicate-keys.yaml", None)
