@@ -153,7 +153,7 @@ class Snapshot:
         )
 
         waiter_import = ec2client.get_waiter("snapshot_imported")
-        waiter_import.wait(ImportTaskIds=[import_snapshot_task_id])
+        waiter_import.wait(ImportTaskIds=[import_snapshot_task_id], WaiterConfig={"Delay": 30, "MaxAttempts": 60})
 
         task_details = ec2client.describe_import_snapshot_tasks(ImportTaskIds=[import_snapshot_task_id])
         snapshot_id = task_details["ImportSnapshotTasks"][0]["SnapshotTaskDetail"]["SnapshotId"]
@@ -162,7 +162,7 @@ class Snapshot:
         ec2client.create_tags(Resources=[snapshot_id], Tags=tags)
 
         waiter_completed = ec2client.get_waiter("snapshot_completed")
-        waiter_completed.wait(SnapshotIds=[snapshot_id])
+        waiter_completed.wait(SnapshotIds=[snapshot_id], WaiterConfig={"Delay": 30, "MaxAttempts": 60})
 
         logger.info(f"Snapshot import as '{snapshot_id}' in region {ec2client.meta.region_name} done")
         return snapshot_id
@@ -236,6 +236,6 @@ class Snapshot:
             ec2client_dest = boto3.client("ec2", region_name=destination_region)
             waiter = ec2client_dest.get_waiter("snapshot_completed")
             logger.info(f"Waiting for {snapshot_id} in {ec2client_dest.meta.region_name} to complete ...")
-            waiter.wait(SnapshotIds=[snapshot_id])
+            waiter.wait(SnapshotIds=[snapshot_id], WaiterConfig={"Delay": 30, "MaxAttempts": 60})
 
         return snapshot_ids
