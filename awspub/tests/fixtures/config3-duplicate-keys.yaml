@@ -1,0 +1,19 @@
+awspub:
+  s3:
+    bucket_name: "bucket1"
+    bucket_region: "region1"
+
+  source:
+    path: "config1.vmdk"
+    architecture: "x86_64"
+
+  images:
+    "test-image-1":
+      description: |
+        A test image
+      boot_mode: "uefi"
+    # second image with the same key
+    "test-image-1":
+      description: |
+        A test image
+      boot_mode: "uefi"
