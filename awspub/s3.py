@@ -1,5 +1,3 @@
-import os
-import threading
 import boto3
 from boto3.s3.transfer import TransferConfig
 import base64
@@ -13,27 +11,6 @@ MULTIPART_CHUNK_SIZE = 8 * 1024 * 1024
 
 
 logger = logging.getLogger(__name__)
-
-
-class _UploadFileProgress:
-    """
-    Helper class to log progress on S3 uploads
-    """
-
-    def __init__(self, file_path):
-        self._file_path = file_path
-        self._file_size = os.path.getsize(self._file_path)
-        self._file_size_seen = 0
-        self._logged = []
-        self._lock = threading.Lock()
-
-    def __call__(self, bytes_seen):
-        with self._lock:
-            self._file_size_seen += bytes_seen
-            percentage = round((self._file_size_seen / self._file_size) * 100, 0)
-            if percentage > 0.0 and percentage % 10 == 0 and percentage not in self._logged:
-                self._logged.append(percentage)
-                logger.info(f"uploaded {percentage} % ({self._file_size_seen} of {self._file_size} bytes)")
 
 
 class S3:
@@ -120,7 +97,6 @@ class S3:
             self.bucket_name,
             self._ctx.source_sha256,
             ExtraArgs={"ACL": "private", "ChecksumAlgorithm": "SHA256"},
-            Callback=_UploadFileProgress(source_path),
             Config=TransferConfig(multipart_chunksize=MULTIPART_CHUNK_SIZE),
         )
 
