@@ -1,7 +1,6 @@
-import os
-import threading
+from mypy_boto3_s3.type_defs import CompletedPartTypeDef
+from typing import Dict
 import boto3
-from boto3.s3.transfer import TransferConfig
 import base64
 import logging
 import hashlib
@@ -13,27 +12,6 @@ MULTIPART_CHUNK_SIZE = 8 * 1024 * 1024
 
 
 logger = logging.getLogger(__name__)
-
-
-class _UploadFileProgress:
-    """
-    Helper class to log progress on S3 uploads
-    """
-
-    def __init__(self, file_path):
-        self._file_path = file_path
-        self._file_size = os.path.getsize(self._file_path)
-        self._file_size_seen = 0
-        self._logged = []
-        self._lock = threading.Lock()
-
-    def __call__(self, bytes_seen):
-        with self._lock:
-            self._file_size_seen += bytes_seen
-            percentage = round((self._file_size_seen / self._file_size) * 100, 0)
-            if percentage > 0.0 and percentage % 10 == 0 and percentage not in self._logged:
-                self._logged.append(percentage)
-                logger.info(f"uploaded {percentage} % ({self._file_size_seen} of {self._file_size} bytes)")
 
 
 class S3:
@@ -104,43 +82,16 @@ class S3:
         self._s3client.create_bucket(Bucket=self.bucket_name, CreateBucketConfiguration=location)
         logger.info(f"s3 bucket '{self.bucket_name}' created")
 
-    def _upload_file(self, source_path: str) -> None:
-        """
-        Upload a given file to the bucket from context. The key name will be the sha256sum hexdigest of the file
-
-        :param source_path: the path to the local file to upload (usually a .vmdk file)
-        :type source_path: str
-        """
-        logger.info(
-            f"Starting to upload '{source_path}' in bucket '{self.bucket_name}' as key '{self._ctx.source_sha256}'"
-        )
-
-        self._s3client.upload_file(
-            source_path,
-            self.bucket_name,
-            self._ctx.source_sha256,
-            ExtraArgs={"ACL": "private", "ChecksumAlgorithm": "SHA256"},
-            Callback=_UploadFileProgress(source_path),
-            Config=TransferConfig(multipart_chunksize=MULTIPART_CHUNK_SIZE),
-        )
-
-        self._s3client.put_object_tagging(
-            Bucket=self.bucket_name,
-            Key=self._ctx.source_sha256,
-            Tagging={
-                "TagSet": self._ctx.tags,
-            },
-        )
-
-        logger.info(
-            f"Upload of '{source_path}' to bucket '{self.bucket_name}' " f"as key '{self._ctx.source_sha256}' done"
-        )
-
     def upload_file(self, source_path: str):
         """
         Upload a given file to the bucket from context. The key name will be the sha256sum hexdigest of the file.
         If a file with that name already exist in the given bucket and the calculated sha256sum matches
         the sha256sum from S3, nothing will be uploaded. Instead the existing file will be used.
+        This method does use a multipart upload internally so an upload can be retriggered in case
+        of errors and the previously uploaded content will be reused.
+        Note: be aware that failed multipart uploads are not deleted. So it's recommended to setup
+        a bucket lifecycle rule to delete incomplete multipart uploads.
+        See https://docs.aws.amazon.com/AmazonS3/latest/userguide//mpu-abort-incomplete-mpu-lifecycle-config.html
 
         :param source_path: the path to the local file to upload (usually a .vmdk file)
         :type source_path: str
@@ -172,4 +123,135 @@ class S3:
             logging.debug(f"Can not find '{self._ctx.source_sha256}' in bucket '{self.bucket_name}'")
 
         # do the real upload
-        self._upload_file(source_path)
+        self._upload_file_multipart(source_path, s3_sha256sum)
+
+    def _get_multipart_upload_id(self) -> str:
+        """
+        Get an existing or create a multipart upload id
+
+        :return: a multipart upload id
+        :rtype: str
+        """
+        resp = self._s3client.list_multipart_uploads(Bucket=self.bucket_name)
+        multipart_uploads = [
+            upload["UploadId"] for upload in resp.get("Uploads", []) if upload["Key"] == self._ctx.source_sha256
+        ]
+        if len(multipart_uploads) == 1:
+            logger.info(f"found existing multipart upload '{multipart_uploads[0]}' for key '{self._ctx.source_sha256}'")
+            return multipart_uploads[0]
+        elif len(multipart_uploads) == 0:
+            # create a new multipart upload
+            resp_create = self._s3client.create_multipart_upload(
+                Bucket=self.bucket_name,
+                Key=self._ctx.source_sha256,
+                ChecksumAlgorithm="SHA256",
+                ACL="private",
+            )
+            upload_id = resp_create["UploadId"]
+            logger.info(
+                f"new multipart upload (upload id: '{upload_id})' started in bucket "
+                f"{self.bucket_name} for key {self._ctx.source_sha256}"
+            )
+            # if there's an expire rule configured for that bucket, inform about it
+            if resp_create.get("AbortDate"):
+                logger.info(
+                    f"multipart upload '{upload_id}' will expire at "
+                    f"{resp_create['AbortDate']} (rule: {resp_create.get('AbortRuleId')})"
+                )
+            else:
+                logger.warning("there is no matching expire/lifecycle rule configured for incomplete multipart uploads")
+            return upload_id
+        else:
+            # multiple multipart uploads for the same key available
+            logger.warning(
+                f"there are multiple ({len(multipart_uploads)}) multipart uploads ongoing in "
+                f"bucket {self.bucket_name} for key {self._ctx.source_sha256}"
+            )
+            logger.warning("using the first found multipart upload but you should delete pending multipart uploads")
+            return multipart_uploads[0]
+
+    def _upload_file_multipart(self, source_path: str, s3_sha256sum: str) -> None:
+        """
+        Upload a given file to the bucket from context. The key name will be the sha256sum hexdigest of the file
+
+        :param source_path: the path to the local file to upload (usually a .vmdk file)
+        :type source_path: str
+        :param s3_sha256sum: the sha256sum how S3 calculates it
+        :type s3_sha256sum: str
+        """
+        upload_id = self._get_multipart_upload_id()
+
+        logger.info(f"using upload id '{upload_id}' for multipart upload of '{source_path}' ...")
+        resp_list_parts = self._s3client.list_parts(
+            Bucket=self.bucket_name, Key=self._ctx.source_sha256, UploadId=upload_id
+        )
+
+        # sanity check for the used checksum algorithm
+        if resp_list_parts["ChecksumAlgorithm"] != "SHA256":
+            logger.error(f"available ongoing multipart upload '{upload_id}' does not use SHA256 as checksum algorithm")
+
+        # already available parts
+        parts_available = {p["PartNumber"]: p for p in resp_list_parts.get("Parts", [])}
+        # keep a list of parts (either already available or created) required to complete the multipart upload
+        parts: Dict[int, CompletedPartTypeDef] = {}
+        with open(source_path, "rb") as f:
+            # parts start at 1 (not 0)
+            for part_number, chunk in enumerate(iter(lambda: f.read(MULTIPART_CHUNK_SIZE), b""), start=1):
+                # the sha256sum of the current part
+                sha256_part = base64.b64encode(hashlib.sha256(chunk).digest()).decode("ascii")
+                # do nothing if that part number already exist and the sha256sum matches
+                if parts_available.get(part_number):
+                    if parts_available[part_number]["ChecksumSHA256"] == sha256_part:
+                        logger.info(f"part {part_number} already exists and sha256sum matches. continue")
+                        parts[part_number] = dict(
+                            PartNumber=part_number,
+                            ETag=parts_available[part_number]["ETag"],
+                            ChecksumSHA256=parts_available[part_number]["ChecksumSHA256"],
+                        )
+                        continue
+                    else:
+                        logger.info(f"part {part_number} already exists but will be overwritten")
+
+                # upload a new part
+                resp_upload_part = self._s3client.upload_part(
+                    Body=chunk,
+                    Bucket=self.bucket_name,
+                    ContentLength=len(chunk),
+                    ChecksumAlgorithm="SHA256",
+                    ChecksumSHA256=sha256_part,
+                    Key=self._ctx.source_sha256,
+                    PartNumber=part_number,
+                    UploadId=upload_id,
+                )
+                # add new part to the dict of parts
+                parts[part_number] = dict(
+                    PartNumber=part_number,
+                    ETag=resp_upload_part["ETag"],
+                    ChecksumSHA256=sha256_part,
+                )
+                logger.info(f"part {part_number} uploaded")
+
+        logger.info(
+            f"finishing the multipart upload for key '{self._ctx.source_sha256}' in bucket {self.bucket_name} now ..."
+        )
+        # finish the multipart upload
+        self._s3client.complete_multipart_upload(
+            Bucket=self.bucket_name,
+            Key=self._ctx.source_sha256,
+            UploadId=upload_id,
+            ChecksumSHA256=s3_sha256sum,
+            MultipartUpload={"Parts": [value for key, value in parts.items()]},
+        )
+        logger.info(
+            f"multipart upload finished and key '{self._ctx.source_sha256}' now "
+            f"available in bucket '{self.bucket_name}'"
+        )
+
+        # add tagging to the final s3 object
+        self._s3client.put_object_tagging(
+            Bucket=self.bucket_name,
+            Key=self._ctx.source_sha256,
+            Tagging={
+                "TagSet": self._ctx.tags,
+            },
+        )
