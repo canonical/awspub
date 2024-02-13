@@ -17,3 +17,6 @@ Architecture
   `billing_products`) do adjust that sha256sum to make it unique for the
   combination of source .vmdk file and config options.
 * only EBS (no instance-store) and HVM (no PV) are supported.
+* S3 uploads are using a multipart upload so interrupted uploads can be retried
+  but it also means that interrupted updates need to be cleanup up (best via a
+  `bucket lifecycle config <https://docs.aws.amazon.com/AmazonS3/latest/userguide//mpu-abort-incomplete-mpu-lifecycle-config.html>`_

@@ -50,7 +50,8 @@ class Context:
                 )
 
         # calculate the sha256 sum of the source file once
-        self._source_sha256 = self._sha256sum(self.conf["source"]["path"]).hexdigest()
+        self._source_sha256_obj = self._sha256sum(self.conf["source"]["path"])
+        self._source_sha256 = self._source_sha256_obj.hexdigest()
 
     @property
     def conf(self):
