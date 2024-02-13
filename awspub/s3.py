@@ -1,5 +1,6 @@
 from mypy_boto3_s3.type_defs import CompletedPartTypeDef
 from typing import Dict
+import os
 import boto3
 import base64
 import logging
@@ -194,6 +195,8 @@ class S3:
         parts_available = {p["PartNumber"]: p for p in resp_list_parts.get("Parts", [])}
         # keep a list of parts (either already available or created) required to complete the multipart upload
         parts: Dict[int, CompletedPartTypeDef] = {}
+        parts_size_done: int = 0
+        source_path_size: int = os.path.getsize(source_path)
         with open(source_path, "rb") as f:
             # parts start at 1 (not 0)
             for part_number, chunk in enumerate(iter(lambda: f.read(MULTIPART_CHUNK_SIZE), b""), start=1):
@@ -208,6 +211,7 @@ class S3:
                             ETag=parts_available[part_number]["ETag"],
                             ChecksumSHA256=parts_available[part_number]["ChecksumSHA256"],
                         )
+                        parts_size_done += len(chunk)
                         continue
                     else:
                         logger.info(f"part {part_number} already exists but will be overwritten")
@@ -223,13 +227,17 @@ class S3:
                     PartNumber=part_number,
                     UploadId=upload_id,
                 )
+                parts_size_done += len(chunk)
                 # add new part to the dict of parts
                 parts[part_number] = dict(
                     PartNumber=part_number,
                     ETag=resp_upload_part["ETag"],
                     ChecksumSHA256=sha256_part,
                 )
-                logger.info(f"part {part_number} uploaded")
+                logger.info(
+                    f"part {part_number} uploaded ({round(parts_size_done/source_path_size * 100, 2)}% "
+                    f"; {parts_size_done} / {source_path_size} bytes)"
+                )
 
         logger.info(
             f"finishing the multipart upload for key '{self._ctx.source_sha256}' in bucket {self.bucket_name} now ..."
