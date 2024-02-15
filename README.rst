@@ -18,4 +18,4 @@ questions.
 License
 =======
 
-The project uses `Apache-2.0` as license.
+The project uses `GPL-3.0` as license.
