@@ -7,7 +7,7 @@ name = "awspub"
 version = "0.1.0"
 description = "Publish images to AWS EC2"
 
-license = {text = "GPL-3.0-or-later"}
+license = "GPL-3.0-or-later"
 
 authors = [
     "Thomas Bechtold <thomasbechtold@jpberlin.de>"
