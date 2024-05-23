@@ -407,7 +407,9 @@ class Image:
                             },
                             "DeviceName": self.conf["root_device_name"],
                         },
+                        # TODO: make those ephemeral block device mappings configurable
                         {"VirtualName": "ephemeral0", "DeviceName": "/dev/sdb"},
+                        {"VirtualName": "ephemeral1", "DeviceName": "/dev/sdc"},
                     ],
                     EnaSupport=True,
                     SriovNetSupport="simple",
