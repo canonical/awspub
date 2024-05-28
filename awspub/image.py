@@ -1,5 +1,6 @@
 from mypy_boto3_ec2.client import EC2Client
 from mypy_boto3_ssm import SSMClient
+from enum import Enum
 import hashlib
 import boto3
 import logging
@@ -24,6 +25,24 @@ class _ImageInfo:
 
     image_id: str
     snapshot_id: Optional[str]
+
+
+class ImageVerificationErrors(str, Enum):
+    """
+    Possible errors for image verification
+    """
+
+    NOT_EXIST = "image does not exist"
+    STATE_NOT_AVAILABLE = "image not available"
+    ROOT_DEVICE_TYPE = "root device type mismatch"
+    ROOT_DEVICE_VOLUME_TYPE = "root device volume type mismatch"
+    ROOT_DEVICE_VOLUME_SIZE = "root device volume size mismatch"
+    ROOT_DEVICE_SNAPSHOT_NOT_COMPLETE = "root device snapshot not complete"
+    BOOT_MODE = "boot mode mismatch"
+    TAGS = "tags mismatch"
+    TPM_SUPPORT = "tpm support mismatch"
+    IMDS_SUPPORT = "imds support mismatch"
+    BILLING_PRODUCTS = "billing products mismatch"
 
 
 class Image:
@@ -492,57 +511,75 @@ class Image:
         if self.conf["ssm_parameter"]:
             self._put_ssm_parameters()
 
-    def verify(self) -> Dict[str, List[str]]:
+    def _verify(self, region: str) -> List[ImageVerificationErrors]:
+        """
+        Verify (but don't modify or create anything) the image in a single region
+        """
+        problems: List[ImageVerificationErrors] = []
+        ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+        image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+
+        if not image_info:
+            problems.append(ImageVerificationErrors.NOT_EXIST)
+            return problems
+
+        image_aws = ec2client_region.describe_images(ImageIds=[image_info.image_id])["Images"][0]
+
+        # verify state
+        if image_aws["State"] != "available":
+            problems.append(ImageVerificationErrors.STATE_NOT_AVAILABLE)
+
+        # verify RootDeviceType
+        if image_aws["RootDeviceType"] != "ebs":
+            problems.append(ImageVerificationErrors.ROOT_DEVICE_TYPE)
+
+        # verify BootMode
+        if image_aws["BootMode"] != self.conf["boot_mode"]:
+            problems.append(ImageVerificationErrors.BOOT_MODE)
+
+        # verify RootDeviceVolumeType, RootDeviceVolumeSize and Snapshot
+        for bdm in image_aws["BlockDeviceMappings"]:
+            if bdm.get("DeviceName") and bdm["DeviceName"] == image_aws["RootDeviceName"]:
+                # here's the root device
+                if bdm["Ebs"]["VolumeType"] != self.conf["root_device_volume_type"]:
+                    problems.append(ImageVerificationErrors.ROOT_DEVICE_VOLUME_TYPE)
+                if bdm["Ebs"]["VolumeSize"] != self.conf["root_device_volume_size"]:
+                    problems.append(ImageVerificationErrors.ROOT_DEVICE_VOLUME_SIZE)
+
+                # verify snapshot
+                snapshot_aws = ec2client_region.describe_snapshots(SnapshotIds=[bdm["Ebs"]["SnapshotId"]])["Snapshots"][
+                    0
+                ]
+                if snapshot_aws["State"] != "completed":
+                    problems.append(ImageVerificationErrors.ROOT_DEVICE_SNAPSHOT_NOT_COMPLETE)
+
+        # verify tpm support
+        if self.conf["tpm_support"] and image_aws.get("TpmSupport") != self.conf["tpm_support"]:
+            problems.append(ImageVerificationErrors.TPM_SUPPORT)
+
+        # verify imds support
+        if self.conf["imds_support"] and image_aws.get("ImdsSupport") != self.conf["imds_support"]:
+            problems.append(ImageVerificationErrors.IMDS_SUPPORT)
+
+        # billing products
+        if self.conf["billing_products"] and image_aws.get("BillingProducts") != self.conf["billing_products"]:
+            problems.append(ImageVerificationErrors.BILLING_PRODUCTS)
+
+        # verify tags
+        for tag in image_aws["Tags"]:
+            if tag["Key"] == "Name" and tag["Value"] != self.snapshot_name:
+                problems.append(ImageVerificationErrors.TAGS)
+
+        return problems
+
+    def verify(self) -> Dict[str, List[ImageVerificationErrors]]:
         """
         Verify (but don't modify or create anything) that the image configuration
         matches what is on AWS
         """
         logger.info(f"Verifying image {self.image_name} ...")
-        problems: Dict[str, List[str]] = dict()
+        problems: Dict[str, List[ImageVerificationErrors]] = dict()
         for region in self.image_regions:
-            problems[region] = []
-            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
-            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+            problems[region] = self._verify(region)
 
-            if not image_info:
-                problems[region].append("image not available")
-                logger.error(f"  {self.image_name} / {region}: not available in region")
-                continue
-
-            image_aws = ec2client_region.describe_images(ImageIds=[image_info.image_id])["Images"][0]
-            # verify state
-            if image_aws["State"] != "available":
-                problems[region].append(f"State {image_aws['State']} != available")
-
-            # verify RootDeviceType
-            if image_aws["RootDeviceType"] != "ebs":
-                problems[region].append(f"RootDeviceType {image_aws['RootDeviceType']} != ebs")
-
-            # verify BootMode
-            if image_aws["BootMode"] != self.conf["boot_mode"]:
-                problems[region].append(f"BootMode {image_aws['BootMode']} != {self.conf['boot_mode']}")
-
-            # verify RootDeviceVolumeType, RootDeviceVolumeSize and Snapshot
-            for bdm in image_aws["BlockDeviceMappings"]:
-                if bdm.get("DeviceName") and bdm["DeviceName"] == image_aws["RootDeviceName"]:
-                    # here's the root device
-                    if bdm["Ebs"]["VolumeType"] != self.conf["root_device_volume_type"]:
-                        problems[region].append(
-                            f"RootDeviceVolumeType {bdm['Ebs']['VolumeType']} != "
-                            f"{self.conf['root_device_volume_type']}"
-                        )
-                    if bdm["Ebs"]["VolumeSize"] != self.conf["root_device_volume_size"]:
-                        problems[region].append(
-                            f"RootDeviceVolumeSize {bdm['Ebs']['VolumeSize']} != "
-                            f"{self.conf['root_device_volume_size']}"
-                        )
-                    # verify snapshot
-                    snapshot_aws = ec2client_region.describe_snapshots(SnapshotIds=[bdm["Ebs"]["SnapshotId"]])[
-                        "Snapshots"
-                    ][0]
-                    if snapshot_aws["State"] != "completed":
-                        problems[region].append(f"Snapshot state for  {snapshot_aws['SnapshotId']} != completed")
-                    for tag in snapshot_aws["Tags"]:
-                        if tag["Key"] == "Name" and tag["Value"] != self.snapshot_name:
-                            problems[region].append(f"Snapshot name {tag['Value']} != {self.snapshot_name}")
         return problems
