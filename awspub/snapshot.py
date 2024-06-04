@@ -153,7 +153,7 @@ class Snapshot:
         )
 
         waiter_import = ec2client.get_waiter("snapshot_imported")
-        waiter_import.wait(ImportTaskIds=[import_snapshot_task_id], WaiterConfig={"Delay": 30, "MaxAttempts": 60})
+        waiter_import.wait(ImportTaskIds=[import_snapshot_task_id], WaiterConfig={"Delay": 30, "MaxAttempts": 90})
 
         task_details = ec2client.describe_import_snapshot_tasks(ImportTaskIds=[import_snapshot_task_id])
         snapshot_id = task_details["ImportSnapshotTasks"][0]["SnapshotTaskDetail"]["SnapshotId"]
