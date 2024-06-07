@@ -87,7 +87,7 @@ class ConfigImageModel(BaseModel):
     Image/AMI configuration.
     """
 
-    desciption: Optional[str] = Field(description="Optional image description", default=None)
+    description: Optional[str] = Field(description="Optional image description", default=None)
     regions: Optional[List[str]] = Field(
         description="Optional list of regions for this image. If not given, all available regions will be used",
         default=None,
