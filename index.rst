@@ -9,10 +9,9 @@ Only EBS backed images/AMIs are supported!
    :maxdepth: 2
    :caption: Contents:
 
-   howto_publish
-   architecture
-   reference_index
-   reference_config
+   docs/architecture
+   docs/reference_index
+   docs/reference_config
 
 
 Indices and tables

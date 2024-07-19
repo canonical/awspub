@@ -1,0 +1,9 @@
+AMIs
+vmdk
+awspub
+awspub's
+github
+GPL
+https
+io
+readthedocs
