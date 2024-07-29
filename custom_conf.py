@@ -1,4 +1,5 @@
 import datetime
+from requirements_parser import _get_requirements
 
 # Custom configuration for the Sphinx documentation builder.
 # All configuration specific to your project should be done in this file.
@@ -189,15 +190,8 @@ custom_extensions = [
 custom_required_modules = [
     "autodoc_pydantic",
     "pydantic-settings",
-    # package deps
-    "boto3",
-    "botocore",
-    "ruamel.yaml",
-    "mypy_boto3_s3",
-    "mypy_boto3_ssm",
-    "mypy_boto3_ec2",
-    "mypy_boto3_marketplace_catalog",
 ]
+custom_required_modules.extend(_get_requirements())
 
 # Add files or directories that should be excluded from processing.
 custom_excludes = [
