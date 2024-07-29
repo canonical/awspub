@@ -7,7 +7,7 @@ to AWS EC2.
 Documentation
 =============
 
-The documentation can be found under https://awspub.readthedocs.io/en/latest/ .
+The documentation can be found under https://canonical-awspub.readthedocs-hosted.com/ .
 
 Report issues
 =============
