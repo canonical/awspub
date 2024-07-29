@@ -57,7 +57,7 @@ copyright = '%s CC-BY-SA, %s' % (datetime.date.today().year, author)
 # don't know yet)
 # NOTE: If no ogp_* variable is defined (e.g. if you remove this section) the
 # sphinxext.opengraph extension will be disabled.
-ogp_site_url = 'https://awspub.readthedocs.io/en/latest/'
+ogp_site_url = 'https://canonical-awspub.readthedocs-hosted.com/'
 # The documentation website name (usually the same as the product name)
 ogp_site_name = project
 # The URL of an image or logo that is used in the preview
