@@ -1,5 +1,6 @@
 from mypy_boto3_marketplace_catalog import MarketplaceCatalogClient
 import boto3
+import re
 import logging
 from typing import Dict, Any
 
@@ -43,11 +44,11 @@ class ImageMarketplace:
 
         # version doesn't exist already - create a new one
         changeset = self._request_new_version_changeset(image_id)
+        changeset_name = ImageMarketplace.sanitize_changeset_name(
+            f"New version request for {self.conf['version_title']}"
+        )
         resp = self._mpclient.start_change_set(
-            Catalog="AWSMarketplace",
-            ChangeSet=changeset,
-            ChangeSetTags=self._ctx.tags,
-            ChangeSetName=f"New version request for {self.conf['version_title']}",
+            Catalog="AWSMarketplace", ChangeSet=changeset, ChangeSetTags=self._ctx.tags, ChangeSetName=changeset_name
         )
         logger.info(
             f"new version '{self.conf['version_title']}' (image: {image_id}) for entity "
@@ -105,3 +106,15 @@ class ImageMarketplace:
                 },
             }
         ]
+
+    @staticmethod
+    def sanitize_changeset_name(name: str) -> str:
+        # changeset names can only include alphanumeric characters, whitespace, and any combination of the following
+        # characters: _+=.:@- This regex pattern takes the list of allowed characters, does a negative match on the
+        # string and removes all matched (i.e. disallowed) characters. See [0] for reference.
+        # [0] https://docs.aws.amazon.com/marketplace-catalog/latest/api-reference/API_StartChangeSet.html#API_StartChangeSet_RequestSyntax  # noqa
+        return re.sub(
+            "[^\\w\\s+=.:@-]",
+            "",
+            name,
+        )
