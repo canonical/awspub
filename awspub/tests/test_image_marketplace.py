@@ -29,3 +29,17 @@ def test_image_marketplace_request_new_version(imagename, new_version, called_st
         img = image_marketplace.ImageMarketplace(ctx, imagename)
         img.request_new_version("ami-123")
         assert instance.start_change_set.called == called_start_change_set
+
+
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        ("1.0.0", "1.0.0"),
+        ("1.0.0 (testing)", "1.0.0 testing"),
+        ("a sentence with spaces", "a sentence with spaces"),
+        ("_+=.:@-", "_+=.:@-"),
+        ("(parens) [brackets] |pipes|", "parens brackets pipes"),
+    ],
+)
+def test_changeset_name_sanitization(name, expected):
+    assert image_marketplace.ImageMarketplace.sanitize_changeset_name(name) == expected
