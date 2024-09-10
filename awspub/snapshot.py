@@ -1,11 +1,11 @@
-from mypy_boto3_ec2.client import EC2Client
-import boto3
 import logging
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 
-from awspub.context import Context
+import boto3
+from mypy_boto3_ec2.client import EC2Client
+
 from awspub import exceptions
-
+from awspub.context import Context
 
 logger = logging.getLogger(__name__)
 

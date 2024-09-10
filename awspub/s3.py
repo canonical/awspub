@@ -1,12 +1,13 @@
-from mypy_boto3_s3.type_defs import CompletedPartTypeDef
-from typing import Dict
-import os
-import boto3
 import base64
-import logging
 import hashlib
-from awspub.context import Context
+import logging
+import os
+from typing import Dict
 
+import boto3
+from mypy_boto3_s3.type_defs import CompletedPartTypeDef
+
+from awspub.context import Context
 
 # chunk size is required for calculating the checksums
 MULTIPART_CHUNK_SIZE = 8 * 1024 * 1024

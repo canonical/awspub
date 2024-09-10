@@ -1,18 +1,18 @@
+import hashlib
+import logging
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
+import boto3
 from mypy_boto3_ec2.client import EC2Client
 from mypy_boto3_ssm import SSMClient
-from enum import Enum
-import hashlib
-import boto3
-import logging
-from typing import Optional, List, Dict, Any
-from dataclasses import dataclass
 
+from awspub import exceptions
 from awspub.context import Context
-from awspub.snapshot import Snapshot
 from awspub.image_marketplace import ImageMarketplace
 from awspub.s3 import S3
-from awspub import exceptions
-
+from awspub.snapshot import Snapshot
 
 logger = logging.getLogger(__name__)
 

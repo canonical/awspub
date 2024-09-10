@@ -1,11 +1,9 @@
-from unittest.mock import patch
-import pytest
 import pathlib
+from unittest.mock import patch
 
-from awspub import context
-from awspub import image
-from awspub import exceptions
+import pytest
 
+from awspub import context, exceptions, image
 
 curdir = pathlib.Path(__file__).parent.resolve()
 

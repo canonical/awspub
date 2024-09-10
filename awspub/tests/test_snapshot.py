@@ -1,9 +1,9 @@
 import pathlib
 from unittest.mock import MagicMock
+
 import pytest
 
 from awspub import context, snapshot
-
 
 curdir = pathlib.Path(__file__).parent.resolve()
 

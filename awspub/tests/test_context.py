@@ -1,11 +1,11 @@
-import pathlib
-import os
 import glob
+import os
+import pathlib
+
 import pytest
 from ruamel.yaml.constructor import DuplicateKeyError
 
 from awspub import context
-
 
 curdir = pathlib.Path(__file__).parent.resolve()
 

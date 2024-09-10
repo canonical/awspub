@@ -1,11 +1,11 @@
-from mypy_boto3_marketplace_catalog import MarketplaceCatalogClient
-import boto3
-import re
 import logging
-from typing import Dict, Any
+import re
+from typing import Any, Dict
+
+import boto3
+from mypy_boto3_marketplace_catalog import MarketplaceCatalogClient
 
 from awspub.context import Context
-
 
 logger = logging.getLogger(__name__)
 

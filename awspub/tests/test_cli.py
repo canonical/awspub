@@ -1,9 +1,8 @@
-import pytest
 import pathlib
 
-from awspub import context
-from awspub import cli
+import pytest
 
+from awspub import cli, context
 
 curdir = pathlib.Path(__file__).parent.resolve()
 

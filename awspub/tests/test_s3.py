@@ -1,9 +1,9 @@
 import pathlib
 from unittest.mock import patch
+
 import pytest
 
 from awspub import context, s3
-
 
 curdir = pathlib.Path(__file__).parent.resolve()
 

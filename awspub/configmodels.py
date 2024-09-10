@@ -1,6 +1,7 @@
 import pathlib
+from typing import Dict, List, Literal, Optional
+
 from pydantic import BaseModel, Field
-from typing import Dict, Literal, List, Optional
 
 
 class ConfigS3Model(BaseModel):
