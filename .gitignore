@@ -7,6 +7,7 @@ dist
 *.snap
 docs-build/
 config.yaml
+.coverage
 
 # docs
 /*env*/

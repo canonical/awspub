@@ -36,6 +36,7 @@ flake8 = "*"
 black = "*"
 pytest = "*"
 coverage = "^7.4.1"
+isort = "^5.13.2"
 
 [tool.poetry.group.type]
 optional = true
