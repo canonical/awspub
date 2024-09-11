@@ -1,12 +1,12 @@
 import hashlib
-import pathlib
 import logging
-from ruamel.yaml import YAML
+import pathlib
 from string import Template
 from typing import Dict
 
-from awspub.configmodels import ConfigModel
+from ruamel.yaml import YAML
 
+from awspub.configmodels import ConfigModel
 
 logger = logging.getLogger(__name__)
 

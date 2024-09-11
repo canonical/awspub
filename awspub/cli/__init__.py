@@ -1,16 +1,15 @@
 #!/usr/bin/python3
 
-import pathlib
-import sys
+import argparse
 import json
 import logging
-import argparse
-from typing import Dict, Optional, List, Tuple, Iterator
+import pathlib
+import sys
+from typing import Dict, Iterator, List, Optional, Tuple
 
 from awspub.context import Context
-from awspub.s3 import S3
 from awspub.image import Image, _ImageInfo
-
+from awspub.s3 import S3
 
 logger = logging.getLogger(__name__)
 
