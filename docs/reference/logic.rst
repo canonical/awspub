@@ -1,5 +1,5 @@
-Reference
-=========
+Reference for logical components
+================================
 
 .. automodule:: awspub.context
      :members:

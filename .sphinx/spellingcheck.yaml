@@ -9,7 +9,7 @@ matrix:
     - .custom_wordlist.txt
     output: .sphinx/.wordlist.dic
   sources:
-    - _build/**/*.html|!_build/genindex/*|!_build/docs/reference_config/index.html|!_build/docs/reference_index/index.html|!_build/docs/architecture/index.html
+    - _build/**/*.html|!_build/genindex/*|!_build/docs/reference/config_models/index.html|!_build/docs/reference/logic/index.html|!_build/docs/reference/architecture/index.html
   spelling_ignore_pypi_package_names: true
   spelling_ignore_importable_modules: true
   pipeline:
