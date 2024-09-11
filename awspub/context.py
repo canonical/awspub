@@ -37,7 +37,7 @@ class Context:
             ft = template.substitute(**self._conf_template_mapping)
             y = yaml.load(ft)["awspub"]
             self._conf = ConfigModel(**y).model_dump()
-            logger.debug(f"config loaded as: {self._conf}")
+            logger.debug(f"config loaded and validated as: {self._conf}")
 
         # handle relative paths in config files. those are relative to the config file dirname
         if not self.conf["source"]["path"].is_absolute():

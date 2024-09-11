@@ -1,0 +1,13 @@
+awspub:
+  s3:
+    bucket_name: "bucket1"
+    bucket_region: "us-east-1"
+    invalid_field: "not allowed" # This is an invalid field
+  source:
+    path: "config1.vmdk"
+    architecture: "x86_64"
+  images:
+    test-image:
+      description: "Test Image"
+      separate_snapshot: "False"
+      boot_mode: "uefi-preferred"

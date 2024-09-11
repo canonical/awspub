@@ -3,6 +3,7 @@ import os
 import pathlib
 
 import pytest
+from pydantic import ValidationError
 from ruamel.yaml.constructor import DuplicateKeyError
 
 from awspub import context
@@ -65,3 +66,25 @@ def test_context_with_duplicate_image_name():
     """
     with pytest.raises(DuplicateKeyError):
         context.Context(curdir / "fixtures/config3-duplicate-keys.yaml", None)
+
+
+@pytest.mark.parametrize(
+    "config_file",
+    ["fixtures/config-minimal.yaml", "fixtures/config-valid-nonawspub.yaml"],
+)
+def test_valid_configuration(config_file):
+    """
+    Test with a valid configuration file (no extra fields)
+    """
+    ctx = context.Context(curdir / config_file, None)
+    assert ctx.conf is not None
+    assert ctx.conf["s3"]["bucket_name"] == "bucket1"
+    assert ctx.conf["source"]["architecture"] == "x86_64"
+
+
+def test_invalid_configuration_extra_field():
+    """
+    Test with an invalid configuration file that includes an extra field
+    """
+    with pytest.raises(ValidationError):
+        context.Context(curdir / "fixtures/config-invalid-s3-extra.yaml", None)

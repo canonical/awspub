@@ -1,0 +1,14 @@
+awspub:
+  s3:
+    bucket_name: "bucket1"
+    bucket_region: "us-east-1"
+  source:
+    path: "config1.vmdk"
+    architecture: "x86_64"
+  images:
+    test-image:
+      description: "Test Image"
+      separate_snapshot: "False"
+      boot_mode: "uefi-preferred"
+notawspub: # to make sure config outside of toplevel `awspub` dict is allowed
+  foo_bar: "irrelevant"
