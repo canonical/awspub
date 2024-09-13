@@ -1,7 +1,7 @@
 import pathlib
 from typing import Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ConfigS3Model(BaseModel):
@@ -10,6 +10,8 @@ class ConfigS3Model(BaseModel):
     This is required for uploading source files (usually .vmdk) to a bucket so
     snapshots can be created out of the s3 file
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     bucket_name: str = Field(description="The S3 bucket name")
     bucket_region: str = Field(description="The S3 region name")
@@ -22,6 +24,8 @@ class ConfigSourceModel(BaseModel):
     to S3 and then used to create EC2 snapshots in different regions.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     path: pathlib.Path = Field(description="Path to a local .vmdk image")
     architecture: Literal["x86_64", "arm64"] = Field(description="The architecture of the given .vmdk image")
 
@@ -30,6 +34,8 @@ class ConfigImageMarketplaceSecurityGroupModel(BaseModel):
     """
     Image/AMI Marketplace specific configuration for a security group
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     from_port: int = Field(description="The source port")
     ip_protocol: Literal["tcp", "udp"] = Field(description="The IP protocol (either 'tcp' or 'udp')")
@@ -43,6 +49,8 @@ class ConfigImageMarketplaceModel(BaseModel):
     See https://docs.aws.amazon.com/marketplace-catalog/latest/api-reference/ami-products.html
     for further information
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     entity_id: str = Field(description="The entity ID (product ID)")
     # see https://docs.aws.amazon.com/marketplace/latest/userguide/ami-single-ami-products.html#single-ami-marketplace-ami-access  # noqa:E501
@@ -70,6 +78,8 @@ class ConfigImageSSMParameterModel(BaseModel):
     Image/AMI SSM specific configuration to push parameters of type `aws:ec2:image` to the parameter store
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(
         description="The fully qualified name of the parameter that you want to add to the system. "
         "A parameter name must be unique within an Amazon Web Services Region"
@@ -87,6 +97,8 @@ class ConfigImageModel(BaseModel):
     """
     Image/AMI configuration.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     description: Optional[str] = Field(description="Optional image description", default=None)
     regions: Optional[List[str]] = Field(
@@ -135,6 +147,8 @@ class ConfigModel(BaseModel):
     """
     The base model for the whole configuration
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     s3: ConfigS3Model
     source: ConfigSourceModel
