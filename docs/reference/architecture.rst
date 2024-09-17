@@ -8,7 +8,7 @@ Architecture
   by name. If the name doesn't exist, it will create the image. If the
   name exists, it will use that image. If the name exist multiple times
   it will throw an exception.
-* images will not be modified. so if a configuration changes it parameters
+* images will not be modified. so if a configuration changes its parameters
   for an image and the image already exists, the parameters will not
   be changed on EC2 (also most parameters can't be changed anyway for an
   image on EC2).
