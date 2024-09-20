@@ -8,3 +8,7 @@ class MultipleImportSnapshotTasksException(Exception):
 
 class MultipleImagesException(Exception):
     pass
+
+
+class IncorrectBucketRegionException(Exception):
+    pass

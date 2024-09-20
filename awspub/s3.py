@@ -8,6 +8,7 @@ import boto3
 from mypy_boto3_s3.type_defs import CompletedPartTypeDef
 
 from awspub.context import Context
+from awspub.exceptions import IncorrectBucketRegionException
 
 # chunk size is required for calculating the checksums
 MULTIPART_CHUNK_SIZE = 8 * 1024 * 1024
@@ -70,7 +71,16 @@ class S3:
         :rtype: bool
         """
         resp = self._s3client.list_buckets()
-        return self.bucket_name in [b["Name"] for b in resp["Buckets"]]
+        if self.bucket_name in [b["Name"] for b in resp["Buckets"]]:
+            # verify bucket exists in expected region
+            real_bucket_region = self._s3client.head_bucket(Bucket=self.bucket_name)["BucketRegion"]
+            if real_bucket_region != self.bucket_region:
+                raise IncorrectBucketRegionException(
+                    f"S3 bucket found in unexpected region. Bucket named '{self.bucket_name}' found in "
+                    f"'{real_bucket_region}', was expected in '{self.bucket_region}'"
+                )
+            return True
+        return False
 
     def _bucket_create(self):
         """
