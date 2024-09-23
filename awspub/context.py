@@ -2,7 +2,7 @@ import hashlib
 import logging
 import pathlib
 from string import Template
-from typing import Dict
+from typing import Dict, Optional
 
 from ruamel.yaml import YAML
 
@@ -17,7 +17,7 @@ class Context:
     automatically calculated values
     """
 
-    def __init__(self, conf_path: pathlib.Path, conf_template_mapping_path: pathlib.Path):
+    def __init__(self, conf_path: pathlib.Path, conf_template_mapping_path: pathlib.Path, region: Optional[str] = None):
         self._conf_path = conf_path
         self._conf = None
         self._conf_template_mapping_path = conf_template_mapping_path
@@ -48,6 +48,10 @@ class Context:
                 self.conf["images"][image_name]["uefi_data"] = (
                     pathlib.Path(self._conf_path).parent / self.conf["images"][image_name]["uefi_data"]
                 )
+
+        # override region if cli flag was provided
+        if region:
+            self.conf["s3"]["bucket_region"] = region
 
         # calculate the sha256 sum of the source file once
         self._source_sha256_obj = self._sha256sum(self.conf["source"]["path"])

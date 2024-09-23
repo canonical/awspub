@@ -58,7 +58,7 @@ def _create(args) -> None:
     Create images based on the given configuration and write json
     data to the given output
     """
-    ctx = Context(args.config, args.config_mapping)
+    ctx = Context(args.config, args.config_mapping, args.region)
     s3 = S3(ctx)
     s3.upload_file(ctx.conf["source"]["path"])
     images: List[Tuple[str, Image, Dict[str, _ImageInfo]]] = []
@@ -126,6 +126,7 @@ def _parser():
     )
     p_create.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
     p_create.add_argument("--group", type=str, help="only handles images from given group")
+    p_create.add_argument("--region", type=str, help="the region for the initial upload")
     p_create.add_argument("config", type=pathlib.Path, help="the image configuration file path")
     p_create.set_defaults(func=_create)
 
