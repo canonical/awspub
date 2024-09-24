@@ -14,7 +14,6 @@ class ConfigS3Model(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     bucket_name: str = Field(description="The S3 bucket name")
-    bucket_region: str = Field(description="The S3 region name")
 
 
 class ConfigSourceModel(BaseModel):
