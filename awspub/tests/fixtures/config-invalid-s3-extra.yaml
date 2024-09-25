@@ -1,7 +1,6 @@
 awspub:
   s3:
     bucket_name: "bucket1"
-    bucket_region: "us-east-1"
     invalid_field: "not allowed" # This is an invalid field
   source:
     path: "config1.vmdk"

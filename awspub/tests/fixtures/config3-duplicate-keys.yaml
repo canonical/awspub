@@ -1,7 +1,6 @@
 awspub:
   s3:
     bucket_name: "bucket1"
-    bucket_region: "region1"
 
   source:
     path: "config1.vmdk"

@@ -48,7 +48,8 @@ def test_snapshot_names(imagename, snapshotname):
         ("test-image-2", ["all-region-1", "all-region-2"]),
     ],
 )
-def test_image_regions(imagename, regions):
+@patch("awspub.s3.S3.bucket_region", return_value="region1")
+def test_image_regions(s3_region_mock, imagename, regions):
     """
     Test the regions for a given image
     """
@@ -299,7 +300,8 @@ def test_image_list(available_images, expected):
         assert img.list() == expected
 
 
-def test_image_create_existing():
+@patch("awspub.s3.S3.bucket_region", return_value="region1")
+def test_image_create_existing(s3_bucket_mock):
     """
     Test the create() method for a given image that already exist
     """

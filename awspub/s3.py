@@ -8,6 +8,7 @@ import boto3
 from mypy_boto3_s3.type_defs import CompletedPartTypeDef
 
 from awspub.context import Context
+from awspub.exceptions import BucketDoesNotExistException
 
 # chunk size is required for calculating the checksums
 MULTIPART_CHUNK_SIZE = 8 * 1024 * 1024
@@ -27,11 +28,17 @@ class S3:
         "type context: awspub.context.Context
         """
         self._ctx: Context = context
-        self._s3client = boto3.client("s3", region_name=self.bucket_region)
+        self._s3client = boto3.client("s3")
+        self._bucket_region = None
 
     @property
     def bucket_region(self):
-        return self._ctx.conf["s3"]["bucket_region"]
+        if not self._bucket_region:
+            if not self._bucket_exists():
+                raise BucketDoesNotExistException(self.bucket_name)
+            self._bucket_region = self._s3client.head_bucket(Bucket=self.bucket_name)["BucketRegion"]
+
+        return self._bucket_region
 
     @property
     def bucket_name(self):
@@ -64,25 +71,13 @@ class S3:
 
     def _bucket_exists(self) -> bool:
         """
-        Check if the S3 bucket from context already exists
+        Check if the S3 bucket from context exists
 
-        :return: True if the bucket already exists, otherwise False
+        :return: True if the bucket exists, otherwise False
         :rtype: bool
         """
         resp = self._s3client.list_buckets()
         return self.bucket_name in [b["Name"] for b in resp["Buckets"]]
-
-    def _bucket_create(self):
-        """
-        Create the S3 bucket from context
-        """
-        if self._bucket_exists():
-            logger.info(f"s3 bucket '{self.bucket_name}' already exists")
-            return
-
-        location = {"LocationConstraint": self.bucket_region}
-        self._s3client.create_bucket(Bucket=self.bucket_name, CreateBucketConfiguration=location)
-        logger.info(f"s3 bucket '{self.bucket_name}' created")
 
     def upload_file(self, source_path: str):
         """
@@ -99,7 +94,8 @@ class S3:
         :type source_path: str
         """
         # make sure the bucket exists
-        self._bucket_create()
+        if not self._bucket_exists():
+            raise BucketDoesNotExistException(self.bucket_name)
 
         s3_sha256sum = self._multipart_sha256sum(source_path)
 

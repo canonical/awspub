@@ -6,7 +6,6 @@ awspub:
 
   s3:
     bucket_name: "awspub-toabctl"
-    bucket_region: "eu-central-1"
 
   images:
     "my-custom-image":
