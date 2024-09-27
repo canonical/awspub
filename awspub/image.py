@@ -495,16 +495,24 @@ class Image:
 
         # handle marketplace publication
         if self.conf["marketplace"]:
-            logger.info(f"marketplace version request for {self.image_name}")
-            # image needs to be in us-east-1
-            ec2client: EC2Client = boto3.client("ec2", region_name="us-east-1")
-            image_info: Optional[_ImageInfo] = self._get(ec2client)
-            if image_info:
-                im = ImageMarketplace(self._ctx, self.image_name)
-                im.request_new_version(image_info.image_id)
+            # the "marketplace" configuration is only valid in the "aws" partition
+            partition = boto3.client("ec2").meta.partition
+            if partition == "aws":
+                logger.info(f"marketplace version request for {self.image_name}")
+                # image needs to be in us-east-1
+                ec2client: EC2Client = boto3.client("ec2", region_name="us-east-1")
+                image_info: Optional[_ImageInfo] = self._get(ec2client)
+                if image_info:
+                    im = ImageMarketplace(self._ctx, self.image_name)
+                    im.request_new_version(image_info.image_id)
+                else:
+                    logger.error(
+                        f"can not request marketplace version for {self.image_name} because no image found in us-east-1"
+                    )
             else:
-                logger.error(
-                    f"can not request marketplace version for {self.image_name} because no image found in us-east-1"
+                logger.info(
+                    f"found marketplace config for {self.image_name} and partition 'aws' but "
+                    f"currently using partition {partition}. Ignoring marketplace config."
                 )
 
         # handle SSM parameter store

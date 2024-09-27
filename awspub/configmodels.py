@@ -131,7 +131,9 @@ class ConfigImageModel(BaseModel):
         description="Optional boolean field indicates if the image should be public", default=False
     )
     marketplace: Optional[ConfigImageMarketplaceModel] = Field(
-        description="Optional structure containing Marketplace related configuration", default=None
+        description="Optional structure containing Marketplace related configuration for the commercial "
+        "'aws' partition",
+        default=None,
     )
     ssm_parameter: Optional[List[ConfigImageSSMParameterModel]] = Field(
         description="Optional list of SSM parameter paths of type `aws:ec2:image` which will "

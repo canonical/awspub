@@ -118,19 +118,23 @@ def test_image___get_root_device_snapshot_id(root_device_name, block_device_mapp
 
 
 @pytest.mark.parametrize(
-    "imagename,called_mod_image,called_mod_snapshot,called_start_change_set,called_put_parameter",
+    "imagename,partition,called_mod_image,called_mod_snapshot,called_start_change_set,called_put_parameter",
     [
-        ("test-image-6", True, True, False, False),
-        ("test-image-7", False, False, False, False),
-        ("test-image-8", True, True, True, True),
+        ("test-image-6", "aws", True, True, False, False),
+        ("test-image-7", "aws", False, False, False, False),
+        ("test-image-8", "aws", True, True, True, True),
+        ("test-image-8", "aws-cn", True, True, False, True),
     ],
 )
-def test_image_public(imagename, called_mod_image, called_mod_snapshot, called_start_change_set, called_put_parameter):
+def test_image_public(
+    imagename, partition, called_mod_image, called_mod_snapshot, called_start_change_set, called_put_parameter
+):
     """
     Test the public() for a given image
     """
     with patch("boto3.client") as bclient_mock:
         instance = bclient_mock.return_value
+        instance.meta.partition = partition
         instance.describe_images.return_value = {
             "Images": [
                 {
