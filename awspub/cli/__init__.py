@@ -5,52 +5,10 @@ import json
 import logging
 import pathlib
 import sys
-from typing import Dict, Iterator, List, Optional, Tuple
 
-from awspub.context import Context
-from awspub.image import Image, _ImageInfo
-from awspub.s3 import S3
+import awspub
 
 logger = logging.getLogger(__name__)
-
-
-def _images_filtered(context: Context, group: Optional[str]) -> Iterator[Tuple[str, Image]]:
-    """
-    Filter the images from ctx based on the given args
-    :param context: the context
-    :type context: a awspub.context.Context instance
-    :param group: a optional group name
-    :type group: Optional[str]
-    """
-    for image_name in context.conf["images"].keys():
-        image = Image(context, image_name)
-        if group:
-            # limit the images to process to the group given on the command line
-            if group not in image.conf.get("groups", []):
-                logger.info(f"skipping image {image_name} because not part of group {group}")
-                continue
-
-        logger.info(f"processing image {image_name} (group: {group})")
-        yield image_name, image
-
-
-def _images_json(images: List[Tuple[str, Image, Dict[str, _ImageInfo]]], group: Optional[str]):
-    """
-    Return json data which is the output for eg. the create and list commands
-    That data has images listed by name but also images grouped by the group
-    """
-    images_by_name: Dict[str, Dict[str, str]] = dict()
-    images_by_group: Dict[str, Dict[str, Dict[str, str]]] = dict()
-    for image_name, image, image_result in images:
-        images_region_id: Dict[str, str] = {key: val.image_id for (key, val) in image_result.items()}
-        images_by_name[image_name] = images_region_id
-        for image_group in image.conf.get("groups", []):
-            if group and image_group != group:
-                continue
-            if not images_by_group.get(image_group):
-                images_by_group[image_group] = {}
-            images_by_group[image_group][image_name] = images_region_id
-    return json.dumps({"images": images_by_name, "images-by-group": images_by_group}, indent=4)
 
 
 def _create(args) -> None:
@@ -58,15 +16,9 @@ def _create(args) -> None:
     Create images based on the given configuration and write json
     data to the given output
     """
-    ctx = Context(args.config, args.config_mapping)
-    s3 = S3(ctx)
-    s3.upload_file(ctx.conf["source"]["path"])
-    images: List[Tuple[str, Image, Dict[str, _ImageInfo]]] = []
-    for image_name, image in _images_filtered(ctx, args.group):
-        image_result: Dict[str, _ImageInfo] = image.create()
-        images.append((image_name, image, image_result))
-
-    args.output.write((_images_json(images, args.group)))
+    images_by_name, images_by_group = awspub.create(args.config, args.config_mapping, args.group)
+    images_json = json.dumps({"images": images_by_name, "images-by-group": images_by_group}, indent=4)
+    args.output.write(images_json)
 
 
 def _list(args) -> None:
@@ -74,23 +26,16 @@ def _list(args) -> None:
     List images based on the given configuration and write json
     data to the given output
     """
-    ctx = Context(args.config, args.config_mapping)
-    images: List[Tuple[str, Image, Dict[str, _ImageInfo]]] = []
-    for image_name, image in _images_filtered(ctx, args.group):
-        image_result: Dict[str, _ImageInfo] = image.list()
-        images.append((image_name, image, image_result))
-
-    args.output.write((_images_json(images, args.group)))
+    images_by_name, images_by_group = awspub.list(args.config, args.config_mapping, args.group)
+    images_json = json.dumps({"images": images_by_name, "images-by-group": images_by_group}, indent=4)
+    args.output.write(images_json)
 
 
 def _verify(args) -> None:
     """
     Verify available images against configuration
     """
-    problems: Dict[str, Dict] = dict()
-    ctx = Context(args.config, args.config_mapping)
-    for image_name, image in _images_filtered(ctx, args.group):
-        problems[image_name] = image.verify()
+    problems = awspub.verify(args.config, args.config_mapping, args.group)
     args.output.write((json.dumps({"problems": problems}, indent=4)))
 
 
@@ -98,18 +43,14 @@ def _cleanup(args) -> None:
     """
     Cleanup available images
     """
-    ctx = Context(args.config, args.config_mapping)
-    for image_name, image in _images_filtered(ctx, args.group):
-        image.cleanup()
+    awspub.cleanup(args.config, args.config_mapping, args.group)
 
 
 def _public(args) -> None:
     """
     Make available images public
     """
-    ctx = Context(args.config, args.config_mapping)
-    for image_name, image in _images_filtered(ctx, args.group):
-        image.public()
+    awspub.public(args.config, args.config_mapping, args.group)
 
 
 def _parser():
