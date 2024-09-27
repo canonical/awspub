@@ -4,6 +4,7 @@ awspub:
     architecture: "x86_64"
   s3:
     bucket_name: "awspub-toabctl"
+    bucket_region: "us-east-1"
   images:
     "my-custom-image-1":
       boot_mode: "uefi-preferred"

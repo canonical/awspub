@@ -1,6 +1,7 @@
 awspub:
   s3:
     bucket_name: "bucket1"
+    bucket_region: "us-east-1"
 
   source:
     # config1.vmdk generated with
