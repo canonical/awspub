@@ -19,6 +19,10 @@ In this documentation
 
        **Publish** covers how to publish images to AWS
 
+   .. grid-item:: :doc:`How to use the API <api>`
+
+       **API** covers how to use the API
+
 .. toctree::
    :hidden:
    :maxdepth: 2
@@ -26,3 +30,4 @@ In this documentation
 
    install
    publish
+   api
