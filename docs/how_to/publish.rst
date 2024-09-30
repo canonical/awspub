@@ -171,8 +171,8 @@ only to images defined within `group2`.
    If no `--group` parameter is given, the different commands operate on **all** defined images.
 
 
-Public images
-~~~~~~~~~~~~~
+Publish images
+~~~~~~~~~~~~~~
 
 To make images public, the configuration needs to have the `public` flag set for
 each image that needs to be public.
@@ -185,7 +185,7 @@ The image needs to be created and then published:
 .. code-block:: shell
 
   awspub create config.yaml
-  awspub public config.yaml
+  awspub publish config.yaml
 
 AWS Marketplace
 ~~~~~~~~~~~~~~~
@@ -195,13 +195,13 @@ It's possible to publish to `AWS Marketplace <https://docs.aws.amazon.com/market
 .. literalinclude:: ../config-samples/config-minimal-marketplace.yaml
    :language: yaml
 
-The image needs to be created first and the `public` command will request a new Marketplace version
+The image needs to be created first and the `publish` command will request a new Marketplace version
 for the given entity:
 
 .. code-block:: shell
 
   awspub create config.yaml
-  awspub public config.yaml
+  awspub publish config.yaml
 
 SSM Parameter Store
 ~~~~~~~~~~~~~~~~~~~
@@ -219,12 +219,12 @@ along with a corresponding mapping file:
 .. literalinclude:: ../config-samples/config-minimal-ssm.yaml.mapping
    :language: yaml
 
-Create the image and use the `public` command to publish the image and also push information to the parameter store:
+Create the image and use the `publish` command to publish the image and also push information to the parameter store:
 
 .. code-block:: shell
 
   awspub create config.yaml --config-mapping config.yaml.mapping
-  awspub public config.yaml --config-mapping config.yaml.mapping
+  awspub publish config.yaml --config-mapping config.yaml.mapping
 
 
 Resource tags

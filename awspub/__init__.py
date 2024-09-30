@@ -1,3 +1,3 @@
-from awspub.api import cleanup, create, list, public, verify
+from awspub.api import cleanup, create, list, publish, verify
 
-__all__ = ["create", "list", "public", "cleanup", "verify"]
+__all__ = ["create", "list", "publish", "cleanup", "verify"]

@@ -10,4 +10,4 @@ Assuming there is a configuration file and a configuration file mapping:
 
    import awspub
    awspub.create("config.yaml", "mapping.yaml")
-   awspub.public("config.yaml", "mapping.yaml")
+   awspub.publish("config.yaml", "mapping.yaml")

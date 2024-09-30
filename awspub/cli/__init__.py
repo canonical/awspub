@@ -46,11 +46,11 @@ def _cleanup(args) -> None:
     awspub.cleanup(args.config, args.config_mapping, args.group)
 
 
-def _public(args) -> None:
+def _publish(args) -> None:
     """
     Make available images public
     """
-    awspub.public(args.config, args.config_mapping, args.group)
+    awspub.publish(args.config, args.config_mapping, args.group)
 
 
 def _parser():
@@ -102,16 +102,16 @@ def _parser():
 
     p_cleanup.set_defaults(func=_cleanup)
 
-    # public
-    p_public = p_sub.add_parser("public", help="Publish images")
-    p_public.add_argument(
+    # publish
+    p_publish = p_sub.add_parser("publish", help="Publish images")
+    p_publish.add_argument(
         "--output", type=argparse.FileType("w+"), help="output file path. defaults to stdout", default=sys.stdout
     )
-    p_public.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
-    p_public.add_argument("--group", type=str, help="only handles images from given group")
-    p_public.add_argument("config", type=pathlib.Path, help="the image configuration file path")
+    p_publish.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
+    p_publish.add_argument("--group", type=str, help="only handles images from given group")
+    p_publish.add_argument("config", type=pathlib.Path, help="the image configuration file path")
 
-    p_public.set_defaults(func=_public)
+    p_publish.set_defaults(func=_publish)
 
     return parser
 

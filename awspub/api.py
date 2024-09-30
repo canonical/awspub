@@ -111,7 +111,7 @@ def list(
     return images_by_name, images_by_group
 
 
-def public(config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[str]):
+def publish(config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[str]):
     """
     Make available images in the partition of the used account based on
     the given configuration file public
@@ -125,7 +125,7 @@ def public(config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[s
     """
     ctx = Context(config, config_mapping)
     for image_name, image in _images_filtered(ctx, group):
-        image.public()
+        image.publish()
 
 
 def cleanup(config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[str]):
