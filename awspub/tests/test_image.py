@@ -126,11 +126,11 @@ def test_image___get_root_device_snapshot_id(root_device_name, block_device_mapp
         ("test-image-8", "aws-cn", True, True, False, True),
     ],
 )
-def test_image_public(
+def test_image_publish(
     imagename, partition, called_mod_image, called_mod_snapshot, called_start_change_set, called_put_parameter
 ):
     """
-    Test the public() for a given image
+    Test the publish() for a given image
     """
     with patch("boto3.client") as bclient_mock:
         instance = bclient_mock.return_value
@@ -156,7 +156,7 @@ def test_image_public(
         instance.get_parameters.return_value = {"Parameters": []}
         ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, imagename)
-        img.public()
+        img.publish()
         assert instance.modify_image_attribute.called == called_mod_image
         assert instance.modify_snapshot_attribute.called == called_mod_snapshot
         assert instance.start_change_set.called == called_start_change_set

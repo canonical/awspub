@@ -1,5 +1,18 @@
-Reference for logical components
-================================
+Reference for the API
+=====================
+
+If in doubt, use the high level API. This
+should work well for most of the use cases.
+
+High-level API
+++++++++++++++
+
+.. automodule:: awspub
+     :members:
+
+
+Low-level API
++++++++++++++
 
 .. automodule:: awspub.context
      :members:

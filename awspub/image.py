@@ -474,7 +474,7 @@ class Image:
 
         return images
 
-    def public(self) -> None:
+    def publish(self) -> None:
         """
         Handle all publication steps
         - make image and underlying root device snapshot public if the public flag is set
