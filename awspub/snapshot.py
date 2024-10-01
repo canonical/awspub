@@ -236,6 +236,6 @@ class Snapshot:
             ec2client_dest = boto3.client("ec2", region_name=destination_region)
             waiter = ec2client_dest.get_waiter("snapshot_completed")
             logger.info(f"Waiting for {snapshot_id} in {ec2client_dest.meta.region_name} to complete ...")
-            waiter.wait(SnapshotIds=[snapshot_id], WaiterConfig={"Delay": 30, "MaxAttempts": 60})
+            waiter.wait(SnapshotIds=[snapshot_id], WaiterConfig={"Delay": 30, "MaxAttempts": 90})
 
         return snapshot_ids
