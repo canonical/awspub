@@ -13,9 +13,9 @@ authors = [
     "Thomas Bechtold <thomasbechtold@jpberlin.de>"
 ]
 
-repository = "https://github.com/toabctl/awspub"
-homepage = "https://github.com/toabctl/awspub"
-readme = ["LICENSE"]
+repository = "https://github.com/canonical/awspub"
+homepage = "https://github.com/canonical/awspub"
+readme = ["readme.rst"]
 keywords = ["AWS", "EC2", "publication"]
 
 
