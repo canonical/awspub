@@ -19,3 +19,20 @@ License
 =======
 
 The project uses `GPL-3.0` as license.
+
+Doing a new release
+===================
+
+New releases are mostly automated.
+
+pypi
+----
+
+For a new release on pypi, create a new tag (following semantic versioning)
+with a `v` as prefix (eg. `v0.2.1`).
+
+snapstore
+---------
+
+The latest git commit will be automatically build and published to the `latest/edge`
+channel. Manually promote from `latest/edge` to `latest/stable`.
