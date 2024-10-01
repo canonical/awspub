@@ -57,7 +57,7 @@ def _parser():
     parser = argparse.ArgumentParser(description="AWS EC2 publication tool")
     parser.add_argument("--log-level", choices=["info", "debug"], default="info")
     parser.add_argument("--log-file", type=pathlib.Path, help="write log to given file instead of stdout")
-    parser.add_argument("--log-console", action=argparse.BooleanOptionalAction, help="write log to stdout")
+    parser.add_argument("--log-console", action="store_true", help="write log to stdout")
     p_sub = parser.add_subparsers(help="sub-command help")
 
     # create
