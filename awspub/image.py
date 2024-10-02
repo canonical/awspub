@@ -493,6 +493,10 @@ class Image:
         else:
             logger.info(f"image {self.image_name} not marked as public. do not publish")
 
+        # handle SSM parameter store
+        if self.conf["ssm_parameter"]:
+            self._put_ssm_parameters()
+
         # handle marketplace publication
         if self.conf["marketplace"]:
             # the "marketplace" configuration is only valid in the "aws" partition
@@ -514,10 +518,6 @@ class Image:
                     f"found marketplace config for {self.image_name} and partition 'aws' but "
                     f"currently using partition {partition}. Ignoring marketplace config."
                 )
-
-        # handle SSM parameter store
-        if self.conf["ssm_parameter"]:
-            self._put_ssm_parameters()
 
     def _verify(self, region: str) -> List[ImageVerificationErrors]:
         """
