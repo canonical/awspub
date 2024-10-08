@@ -40,27 +40,34 @@ def test_snapshot_names(imagename, snapshotname):
 
 
 @pytest.mark.parametrize(
-    "imagename,regions",
+    "imagename,regions_in_partition,regions_expected",
     [
         # test-image-1 has 2 regions defined
-        ("test-image-1", ["region1", "region2"]),
+        ("test-image-1", ["region1", "region2"], ["region1", "region2"]),
+        # test-image-1 has 2 regions defined and there are more regions in the partition
+        ("test-image-1", ["region1", "region2", "region3"], ["region1", "region2"]),
+        ("test-image-1", ["region1", "region2"], ["region1", "region2"]),
         # test-image-2 has no regions defined, so whatever the ec2 client returns should be valid
-        ("test-image-2", ["all-region-1", "all-region-2"]),
+        ("test-image-2", ["all-region-1", "all-region-2"], ["all-region-1", "all-region-2"]),
+        # test-image-1 has 2 regions defined, but those regions are not in the partition
+        ("test-image-1", ["region3", "region4"], []),
+        # test-image-1 has 2 regions defined, but those regions are not partially in the partition
+        ("test-image-1", ["region2", "region4"], ["region2"]),
+        # test-image-2 has no regions defined and the ec2 client doesn't return any regions
+        ("test-image-2", [], []),
     ],
 )
 @patch("awspub.s3.S3.bucket_region", return_value="region1")
-def test_image_regions(s3_region_mock, imagename, regions):
+def test_image_regions(s3_region_mock, imagename, regions_in_partition, regions_expected):
     """
     Test the regions for a given image
     """
     with patch("boto3.client") as bclient_mock:
         instance = bclient_mock.return_value
-        instance.describe_regions.return_value = {
-            "Regions": [{"RegionName": "all-region-1"}, {"RegionName": "all-region-2"}]
-        }
+        instance.describe_regions.return_value = {"Regions": [{"RegionName": r} for r in regions_in_partition]}
         ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, imagename)
-        assert img.image_regions == regions
+        assert sorted(img.image_regions) == sorted(regions_expected)
 
 
 @pytest.mark.parametrize(
@@ -77,6 +84,8 @@ def test_image_cleanup(imagename, cleanup):
     with patch("boto3.client") as bclient_mock:
         instance = bclient_mock.return_value
         instance.describe_images.return_value = {"Images": [{"Name": imagename, "Public": False, "ImageId": "ami-123"}]}
+        instance.describe_regions.return_value = {"Regions": [{"RegionName": "region1"}, {"RegionName": "region2"}]}
+        instance.list_buckets.return_value = {"Buckets": [{"Name": "bucket1"}]}
         ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, imagename)
         img.cleanup()
@@ -154,6 +163,10 @@ def test_image_publish(
             ]
         }
         instance.get_parameters.return_value = {"Parameters": []}
+        instance.describe_regions.return_value = {
+            "Regions": [{"RegionName": "eu-central-1"}, {"RegionName": "us-east-1"}]
+        }
+        instance.list_buckets.return_value = {"Buckets": [{"Name": "bucket1"}]}
         ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, imagename)
         img.publish()
@@ -299,6 +312,10 @@ def test_image_list(available_images, expected):
     with patch("boto3.client") as bclient_mock:
         instance = bclient_mock.return_value
         instance.describe_images.return_value = {"Images": available_images}
+        instance.describe_regions.return_value = {
+            "Regions": [{"RegionName": "eu-central-1"}, {"RegionName": "us-east-1"}]
+        }
+        instance.list_buckets.return_value = {"Buckets": [{"Name": "bucket1"}]}
         ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, "test-image-6")
         assert img.list() == expected
@@ -330,6 +347,10 @@ def test_image_create_existing(s3_bucket_mock):
                 }
             ]
         }
+        instance.describe_regions.return_value = {
+            "Regions": [{"RegionName": "eu-central-1"}, {"RegionName": "us-east-1"}]
+        }
+        instance.list_buckets.return_value = {"Buckets": [{"Name": "bucket1"}]}
         ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, "test-image-6")
         assert img.create() == {"eu-central-1": image._ImageInfo(image_id="ami-123", snapshot_id="snap-123")}
@@ -375,6 +396,10 @@ def test_image__put_ssm_parameters(
         instance = bclient_mock.return_value
         instance.describe_images.return_value = {"Images": describe_images}
         instance.get_parameters.return_value = {"Parameters": get_parameters}
+        instance.describe_regions.return_value = {
+            "Regions": [{"RegionName": "eu-central-1"}, {"RegionName": "us-east-1"}]
+        }
+        instance.list_buckets.return_value = {"Buckets": [{"Name": "bucket1"}]}
         ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, imagename)
         img._put_ssm_parameters()

@@ -54,6 +54,7 @@ class Image:
         self._ctx: Context = context
         self._image_name: str = image_name
         self._image_regions: List[str] = []
+        self._image_regions_cached: bool = False
 
         if self._image_name not in self._ctx.conf["images"].keys():
             raise ValueError(f"image '{self._image_name}' not found in context configuration")
@@ -119,15 +120,28 @@ class Image:
     def image_regions(self) -> List[str]:
         """
         Get the image regions. Either configured in the image configuration
-        or all available regions
+        or all available regions.
+        If a region is listed that is not available in the currently used partition,
+        that region will be ignored (eg. having us-east-1 configured but running in the aws-cn
+        partition doesn't include us-east-1 here).
         """
-        if not self._image_regions:
+        if not self._image_regions_cached:
+            # get all available regions
+            ec2client: EC2Client = boto3.client("ec2", region_name=self._s3.bucket_region)
+            resp = ec2client.describe_regions()
+            image_regions_all = [r["RegionName"] for r in resp["Regions"]]
+
             if self.conf["regions"]:
-                self._image_regions = self.conf["regions"]
+                # filter out regions that are not available in the current partition
+                image_regions_configured_set = set(self.conf["regions"])
+                image_regions_all_set = set(image_regions_all)
+                self._image_regions = list(image_regions_configured_set.intersection(image_regions_all_set))
+                diff = image_regions_configured_set.difference(image_regions_all_set)
+                if diff:
+                    logger.warning(f"configured regions {diff} not available in the current partition. Ignoring those.")
             else:
-                ec2client: EC2Client = boto3.client("ec2", region_name=self._s3.bucket_region)
-                resp = ec2client.describe_regions()
-                self._image_regions = [r["RegionName"] for r in resp["Regions"]]
+                self._image_regions = image_regions_all
+            self._image_regions_cached = True
         return self._image_regions
 
     @property
