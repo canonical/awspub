@@ -101,7 +101,9 @@ class ConfigImageModel(BaseModel):
 
     description: Optional[str] = Field(description="Optional image description", default=None)
     regions: Optional[List[str]] = Field(
-        description="Optional list of regions for this image. If not given, all available regions will be used",
+        description="Optional list of regions for this image. If not given, all available regions will"
+        "be used from the currently used partition. If a region doesn't exist in the currently used partition,"
+        " it will be ignored.",
         default=None,
     )
     separate_snapshot: bool = Field(description="Use a separate snapshot for this image?", default=False)
