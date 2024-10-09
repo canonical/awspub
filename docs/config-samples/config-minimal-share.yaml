@@ -1,0 +1,12 @@
+awspub:
+  source:
+    path: "image.vmdk"
+    architecture: "x86_64"
+  s3:
+    bucket_name: "awspub-toabctl"
+  images:
+    "my-custom-image":
+      boot_mode: "uefi-preferred"
+      share:
+        - "123456789123"
+        - "aws-cn:456789012345"

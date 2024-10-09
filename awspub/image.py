@@ -9,6 +9,7 @@ from mypy_boto3_ec2.client import EC2Client
 from mypy_boto3_ssm import SSMClient
 
 from awspub import exceptions
+from awspub.common import _split_partition
 from awspub.context import Context
 from awspub.image_marketplace import ImageMarketplace
 from awspub.s3 import S3
@@ -159,16 +160,34 @@ class Image:
             tags.append({"Key": name, "Value": value})
         return tags
 
+    def _share_list_filtered(self, share_conf: List[str]) -> List[Dict[str, str]]:
+        """
+        Get a filtered list of share configurations based on the current partition
+        :param share_conf: the share configuration
+        :type share_conf: List[str]
+        :return: a List of share configurations that is usable by modify_image_attribute()
+        :rtype: List[Dict[str, str]]
+        """
+        # the current partition
+        partition_current = boto3.client("ec2").meta.partition
+
+        share_list: List[Dict[str, str]] = []
+        for share in share_conf:
+            partition, account_id = _split_partition(share)
+            if partition == partition_current:
+                share_list.append({"UserId": account_id})
+        return share_list
+
     def _share(self, share_conf: List[str], images: Dict[str, _ImageInfo]):
         """
         Share images with accounts
 
-        :param share_conf: the share configuration. eg. self.conf["share_create"]
+        :param share_conf: the share configuration containing list
         :type share_conf: List[str]
         :param images: a Dict with region names as keys and _ImageInfo objects as values
         :type images: Dict[str, _ImageInfo]
         """
-        share_list: List[Dict[str, str]] = [{"UserId": user_id} for user_id in share_conf]
+        share_list = self._share_list_filtered(share_conf)
 
         for region, image_info in images.items():
             ec2client: EC2Client = boto3.client("ec2", region_name=region)

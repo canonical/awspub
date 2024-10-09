@@ -78,6 +78,11 @@ awspub:
       public: true
       tags:
         key1: value1
+      share:
+        - "123456789123"
+        - "221020170000"
+        - "aws:290620200000"
+        - "aws-cn:334455667788"
       marketplace:
         entity_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         access_role_arn: "arn:aws:iam::xxxxxxxxxxxx:role/AWSMarketplaceAccess"

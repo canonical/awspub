@@ -187,6 +187,18 @@ The image needs to be created and then published:
   awspub create config.yaml
   awspub publish config.yaml
 
+Sharing images
+~~~~~~~~~~~~~~
+
+Images can be shared with other AWS accounts. For that, the account IDs of the other accounts are needed.
+
+.. literalinclude:: ../config-samples/config-minimal-share.yaml
+   :language: yaml
+
+In the above example, the image `my-custom-image` will be shared with the account `1234567890123`
+when `awspub` runs in the commercial partition (``aws``, the default). It'll be shared
+with the account `456789012345` when `awspub` runs in the the china partition (``aws-cn``).
+
 AWS Marketplace
 ~~~~~~~~~~~~~~~
 

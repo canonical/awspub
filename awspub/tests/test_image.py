@@ -456,3 +456,23 @@ def test_image__verify(image_found, config, config_image_name, expected_problems
         img = image.Image(ctx, config_image_name)
         problems = img._verify("eu-central-1")
         assert problems == expected_problems
+
+
+@pytest.mark.parametrize(
+    "partition,imagename,share_list_expected",
+    [
+        ("aws", "test-image-8", [{"UserId": "123456789123"}, {"UserId": "221020170000"}, {"UserId": "290620200000"}]),
+        ("aws-cn", "test-image-8", [{"UserId": "334455667788"}]),
+        ("aws-us-gov", "test-image-8", []),
+    ],
+)
+def test_image__share_list_filtered(partition, imagename, share_list_expected):
+    """
+    Test _share_list_filtered() for a given image
+    """
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+        instance.meta.partition = partition
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        img = image.Image(ctx, imagename)
+        assert img._share_list_filtered(img.conf["share"]) == share_list_expected
