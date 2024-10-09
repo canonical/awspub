@@ -1,7 +1,9 @@
 import pathlib
 from typing import Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from awspub.common import _split_partition
 
 
 class ConfigS3Model(BaseModel):
@@ -124,7 +126,9 @@ class ConfigImageModel(BaseModel):
     )
     imds_support: Optional[Literal["v2.0"]] = Field(description="Optional IMDS support", default=None)
     share: Optional[List[str]] = Field(
-        description="Optional list of account IDs the image and snapshot will be shared with", default=None
+        description="Optional list of account IDs the image and snapshot will be shared with. The account"
+        "ID can be prefixed with the partition and separated by ':'. Eg 'aws-cn:123456789123'",
+        default=None,
     )
     temporary: Optional[bool] = Field(
         description="Optional boolean field indicates that a image is only temporary", default=False
@@ -144,6 +148,21 @@ class ConfigImageModel(BaseModel):
     )
     groups: Optional[List[str]] = Field(description="Optional list of groups this image is part of", default=[])
     tags: Optional[Dict[str, str]] = Field(description="Optional Tags to apply to this image only", default={})
+
+    @field_validator("share")
+    @classmethod
+    def check_share(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """
+        Make sure the account IDs are valid and if given the partition is correct
+        """
+        if v is not None:
+            for val in v:
+                partition, account_id = _split_partition(val)
+                if len(account_id) != 12:
+                    raise ValueError("Account ID must be 12 characters long")
+                if partition not in ["aws", "aws-cn", "aws-us-gov"]:
+                    raise ValueError("Partition must be one of 'aws', 'aws-cn', 'aws-us-gov'")
+        return v
 
 
 class ConfigModel(BaseModel):
