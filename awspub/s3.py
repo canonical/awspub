@@ -113,7 +113,7 @@ class S3:
                 )
                 return
             else:
-                logger.warn(
+                logger.warning(
                     f"'{self._ctx.source_sha256}' in bucket '{self.bucket_name}' "
                     f"already exists but sha256sum does not match. Will be overwritten ..."
                 )
