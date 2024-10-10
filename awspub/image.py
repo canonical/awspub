@@ -189,6 +189,10 @@ class Image:
         """
         share_list = self._share_list_filtered(share_conf)
 
+        if not share_list:
+            logger.info("no valid accounts found for sharing in this partition, skipping")
+            return
+
         for region, image_info in images.items():
             ec2client: EC2Client = boto3.client("ec2", region_name=region)
             # modify image permissions
