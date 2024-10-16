@@ -197,7 +197,8 @@ custom_required_modules.extend(_get_requirements())
 custom_excludes = [
     'doc-cheat-sheet*',
     '.github',
-    'readme.rst'
+    'readme.rst',
+    'release-management.rst',
     ]
 
 # Add CSS files (located in .sphinx/_static/)
