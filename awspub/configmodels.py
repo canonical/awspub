@@ -1,4 +1,5 @@
 import pathlib
+from enum import Enum
 from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -94,6 +95,34 @@ class ConfigImageSSMParameterModel(BaseModel):
     )
 
 
+class SNSNotificationProtocol(str, Enum):
+    DEFAULT = "default"
+    EMAIL = "email"
+
+
+class ConfigImageSNSNotificationModel(BaseModel):
+    """
+    Image/AMI SNS Notification specific configuration to notify subscribers about new images availability
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    subject: str = Field(description="The subject of SNS Notification", min_length=1, max_length=99)
+    message: Dict[SNSNotificationProtocol, str] = Field(
+        description="The body of the message to be sent to subscribers.",
+        default={SNSNotificationProtocol.DEFAULT: ""},
+    )
+
+    @field_validator("message")
+    def check_message(cls, value):
+        # Check message protocols have default key
+        # Message should contain at least a top-level JSON key of “default”
+        # with a value that is a string
+        if SNSNotificationProtocol.DEFAULT not in value:
+            raise ValueError(f"{SNSNotificationProtocol.DEFAULT.value} key is required to send SNS notification")
+        return value
+
+
 class ConfigImageModel(BaseModel):
     """
     Image/AMI configuration.
@@ -148,6 +177,9 @@ class ConfigImageModel(BaseModel):
     )
     groups: Optional[List[str]] = Field(description="Optional list of groups this image is part of", default=[])
     tags: Optional[Dict[str, str]] = Field(description="Optional Tags to apply to this image only", default={})
+    sns: Optional[List[Dict[str, ConfigImageSNSNotificationModel]]] = Field(
+        description="Optional list of SNS Notification related configuration", default=None
+    )
 
     @field_validator("share")
     @classmethod

@@ -14,6 +14,7 @@ from awspub.context import Context
 from awspub.image_marketplace import ImageMarketplace
 from awspub.s3 import S3
 from awspub.snapshot import Snapshot
+from awspub.sns import SNSNotification
 
 logger = logging.getLogger(__name__)
 
@@ -353,6 +354,19 @@ class Image:
             else:
                 logger.error(f"image {self.image_name} not available in region {region}. can not make public")
 
+    def _sns_publish(self) -> None:
+        """
+        Publish SNS notifiations about newly available images to subscribers
+        """
+        for region in self.image_regions:
+            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+
+            if not image_info:
+                logger.error(f"can not send SNS notification for {self.image_name} because no image found in {region}")
+                return
+            SNSNotification(self._ctx, self.image_name, region).publish()
+
     def cleanup(self) -> None:
         """
         Cleanup/delete the temporary images
@@ -555,6 +569,10 @@ class Image:
                     f"found marketplace config for {self.image_name} and partition 'aws' but "
                     f"currently using partition {partition}. Ignoring marketplace config."
                 )
+
+        # send ssn notification
+        if self.conf["sns"]:
+            self._sns_publish()
 
     def _verify(self, region: str) -> List[ImageVerificationErrors]:
         """
