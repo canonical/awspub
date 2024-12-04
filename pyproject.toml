@@ -24,7 +24,7 @@ keywords = ["AWS", "EC2", "publication"]
 python = "^3.8.1"
 boto3 = "*"
 pydantic = "^2"
-boto3-stubs = {extras = ["essential", "marketplace-catalog", "ssm", "s3"], version = "^1.28.83"}
+boto3-stubs = {extras = ["essential", "marketplace-catalog", "ssm", "s3", "sns", "sts"], version = "^1.28.83"}
 autodoc-pydantic = "^2.0.1"
 ruamel-yaml = "^0.18.6"
 
