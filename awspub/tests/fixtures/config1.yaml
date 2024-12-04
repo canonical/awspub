@@ -118,6 +118,35 @@ awspub:
         -
           name: /awspub-test/param2
           allow_overwrite: true
+    "test-image-10":
+      boot_mode: "uefi"
+      description: |
+        A test image without a separate snapshot but single sns configs
+      regions:
+        - "us-east-1"
+      sns:
+        - "topic1":
+            subject: "topic1-subject"
+            message:
+              default: "default-message"
+              email: "email-message"
+    "test-image-11":
+      boot_mode: "uefi"
+      description: |
+        A test image without a separate snapshot but multiple sns configs
+      regions:
+        - "us-east-1"
+        - "eu-central-1"
+      sns:
+        - "topic1":
+            subject: "topic1-subject"
+            message:
+              default: "default-message"
+              email: "email-message"
+        - "topic2":
+            subject: "topic2-subject"
+            message:
+              default: "default-message"
 
   tags:
     name: "foobar"
