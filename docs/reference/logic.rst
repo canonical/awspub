@@ -28,3 +28,6 @@ Low-level API
 
 .. automodule:: awspub.image_marketplace
      :members:
+
+.. automodule:: awspub.sns
+     :members:

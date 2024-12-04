@@ -1,0 +1,19 @@
+awspub:
+  source:
+    path: "image.vmdk"
+    architecture: "x86_64"
+  s3:
+    bucket_name: "awspub-toabctl"
+  images:
+    "my-custom-image":
+      boot_mode: "uefi-preferred"
+      sns:
+        - "my-topic1":
+            subject: "my-topic1-subject"
+            message:
+              default: "This is default message"
+              email: "This is message for email protocols."
+        - "my-topic2":
+            subject: "my-topic2-subject"
+            message:
+              default: "This is message for email protocols. New image $serial is available"
