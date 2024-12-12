@@ -238,6 +238,31 @@ Create the image and use the `publish` command to publish the image and also pus
   awspub create config.yaml --config-mapping config.yaml.mapping
   awspub publish config.yaml --config-mapping config.yaml.mapping
 
+SNS Notification
+~~~~~~~~~~~~~~~~
+
+It's possible to publish messages through the `Simple Notification Service (SNS) <https://docs.aws.amazon.com/sns/latest/dg/welcome.html>`_.
+Delivery to multiple topics is possible, but the topics need to exist in each of the regions an image gets published.
+To notify image information to users, the ``sns`` configuration for each image must be filled:
+
+.. literalinclude:: ../config-samples/config-minimal-sns.yaml
+   :language: yaml
+
+along with a corresponding mapping file:
+
+.. literalinclude:: ../config-samples/config-minimal-sns.yaml.mapping
+   :language: yaml
+
+Currently, the supported protocols are ``default`` and ``email`` only, and the ``default`` key is required to 
+send notifications.
+The ``default`` message will be used as a fallback message for any protocols.
+
+Create the image and use the `publish` command to publish the image and also notify the published images to users:
+
+.. code-block:: shell
+
+  awspub create config.yaml --config-mapping config.yaml.mapping
+  awspub publish config.yaml --config-mapping config.yaml.mapping
 
 Resource tags
 ~~~~~~~~~~~~~

@@ -23,6 +23,8 @@ curdir = pathlib.Path(__file__).parent.resolve()
                 "test-image-7",
                 "test-image-8",
                 "test-image-9",
+                "test-image-10",
+                "test-image-11",
             ],
         ),
         # with a group that no image as, no image should be processed

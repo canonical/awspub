@@ -27,3 +27,7 @@ use for config validation.
 .. autopydantic_model:: awspub.configmodels.ConfigImageMarketplaceSecurityGroupModel
    :model-show-json: True
    :model-show-config-summary: True
+
+.. autopydantic_model:: awspub.configmodels.ConfigImageSNSNotificationModel
+   :model-show-json: True
+   :model-show-config-summary: True
