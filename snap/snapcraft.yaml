@@ -51,13 +51,7 @@ apps:
 
 parts:
   awspub:
-    plugin: python
+    plugin: poetry
     source: .
-    stage-packages:
-      - python3-poetry
     build-packages:
       - git
-    override-build: |
-      craftctl default
-      pip install .
-      sed -i 's|'"$SNAPCRAFT_PART_INSTALL"'||' $SNAPCRAFT_PART_INSTALL/bin/awspub
