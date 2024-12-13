@@ -10,14 +10,16 @@ description: |
   Note: this snap is provided and maintained by Canonical!
   (**not** by Amazon/AWS)
 version: git
-base: core22
+base: core24
 confinement: strict
 license: GPL-3.0
 issues: https://github.com/canonical/awspub/issues
 website: https://canonical-awspub.readthedocs-hosted.com/
-architectures:
-  - build-on: [amd64]
-  - build-on: [arm64]
+platforms:
+  amd64:
+    build-on: [amd64]
+  arm64:
+    build-on: [arm64]
 
 plugs:
   dot-aws-config:
@@ -37,7 +39,6 @@ apps:
   awspub:
     command: bin/awspub
     environment:
-      PYTHONPATH: $SNAP/lib/python3.10/site-packages
       # need to set $HOME to the real HOME here because this is a strict snap
       # and the creds for aws are in $HOME/.aws
       HOME: $SNAP_REAL_HOME
@@ -54,6 +55,8 @@ parts:
     source: .
     stage-packages:
       - python3-poetry
+    build-packages:
+      - git
     override-build: |
       craftctl default
       pip install .
