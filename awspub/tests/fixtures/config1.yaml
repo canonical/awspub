@@ -130,6 +130,8 @@ awspub:
             message:
               default: "default-message"
               email: "email-message"
+            regions:
+              - "us-east-1"
     "test-image-11":
       boot_mode: "uefi"
       description: |
@@ -143,10 +145,27 @@ awspub:
             message:
               default: "default-message"
               email: "email-message"
+            regions:
+              - "us-east-1"
         - "topic2":
             subject: "topic2-subject"
             message:
               default: "default-message"
+            regions:
+              - "us-gov-1"
+              - "eu-central-1"
+    "test-image-12":
+      boot_mode: "uefi"
+      description: |
+        A test image without a separate snapshot but single sns configs
+      regions:
+        - "us-east-1"
+      sns:
+        - "topic1":
+            subject: "topic1-subject"
+            message:
+              default: "default-message"
+              email: "email-message"
 
   tags:
     name: "foobar"

@@ -342,15 +342,7 @@ class Image:
         Publish SNS notifiations about newly available images to subscribers
         """
 
-        # Checking if the image(s) are registered or published before sending the notification
-        for region in self.image_regions:
-            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
-            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
-            if not image_info:
-                logger.error(f"can not send SNS notification for {self.image_name} because no image found in {region}")
-                return
-
-        SNSNotification(self._ctx, self.image_name, self._s3.bucket_region).publish()
+        SNSNotification(self._ctx, self.image_name).publish()
 
     def cleanup(self) -> None:
         """

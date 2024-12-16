@@ -40,7 +40,6 @@ class SNSNotification(object):
         """
         return self._ctx.conf["images"][self._image_name]["sns"]
 
-    def _get_topic_arn(self, topic_name: str) -> str:
     def _sns_regions(self, topic_config: Dict[Any, Any]) -> List[str]:
         """
         Get the sns regions. Either configured in the sns configuration
@@ -55,6 +54,7 @@ class SNSNotification(object):
 
         return sns_regions
 
+    def _get_topic_arn(self, topic_name: str, region_name: str) -> str:
         """
         Calculate topic ARN based on partition, region, account and topic name
         :param topic_name: Name of topic
@@ -65,40 +65,41 @@ class SNSNotification(object):
         :rtype: str
         """
 
-        stsclient: STSClient = boto3.client("sts", region_name=self._region_name)
+        stsclient: STSClient = boto3.client("sts", region_name=region_name)
         resp = stsclient.get_caller_identity()
 
         account = resp["Account"]
         # resp["Arn"] has string format "arn:partition:iam::accountnumber:user/iam_role"
         partition = resp["Arn"].rsplit(":")[1]
 
-        return f"arn:{partition}:sns:{self._region_name}:{account}:{topic_name}"
+        return f"arn:{partition}:sns:{region_name}:{account}:{topic_name}"
 
     def publish(self) -> None:
         """
         send notification to subscribers
         """
 
-        snsclient: SNSClient = boto3.client("sns", region_name=self._region_name)
-
         for topic in self.conf:
             for topic_name, topic_config in topic.items():
-                try:
-                    snsclient.publish(
-                        TopicArn=self._get_topic_arn(topic_name),
-                        Subject=topic_config["subject"],
-                        Message=json.dumps(topic_config["message"]),
-                        MessageStructure="json",
-                    )
-                except ClientError as e:
-                    exception_code: str = e.response["Error"]["Code"]
-                    if exception_code == "AuthorizationError":
-                        raise AWSAuthorizationException(
-                            "Profile does not have a permission to send the SNS notification. Please review the policy."
+                for region_name in self._sns_regions(topic_config):
+                    snsclient: SNSClient = boto3.client("sns", region_name=region_name)
+                    try:
+                        snsclient.publish(
+                            TopicArn=self._get_topic_arn(topic_name, region_name),
+                            Subject=topic_config["subject"],
+                            Message=json.dumps(topic_config["message"]),
+                            MessageStructure="json",
                         )
-                    else:
-                        raise AWSNotificationException(str(e))
-                logger.info(
-                    f"The SNS notification {topic_config['subject']}"
-                    f" for the topic {topic_name} in {self._region_name} has been sent."
-                )
+                    except ClientError as e:
+                        exception_code: str = e.response["Error"]["Code"]
+                        if exception_code == "AuthorizationError":
+                            raise AWSAuthorizationException(
+                                "Profile does not have a permission to send the SNS notification."
+                                " Please review the policy."
+                            )
+                        else:
+                            raise AWSNotificationException(str(e))
+                    logger.info(
+                        f"The SNS notification {topic_config['subject']}"
+                        f" for the topic {topic_name} in {region_name} has been sent."
+                    )

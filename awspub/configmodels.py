@@ -112,6 +112,12 @@ class ConfigImageSNSNotificationModel(BaseModel):
         description="The body of the message to be sent to subscribers.",
         default={SNSNotificationProtocol.DEFAULT: ""},
     )
+    regions: Optional[List[str]] = Field(
+        description="Optional list of regions for sending notification. If not given, regions where the image "
+        "registered will be used from the currently used parition. If a region doesn't exist in the currently "
+        "used partition, it will be ignored.",
+        default=None,
+    )
 
     @field_validator("message")
     def check_message(cls, value):

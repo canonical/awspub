@@ -17,3 +17,5 @@ awspub:
             subject: "my-topic2-subject"
             message:
               default: "This is message for email protocols. New image $serial is available"
+            regions:
+              - us-east-1
