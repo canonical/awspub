@@ -9,7 +9,7 @@ from mypy_boto3_ec2.client import EC2Client
 from mypy_boto3_ssm import SSMClient
 
 from awspub import exceptions
-from awspub.common import _split_partition
+from awspub.common import _get_regions, _split_partition
 from awspub.context import Context
 from awspub.image_marketplace import ImageMarketplace
 from awspub.s3 import S3
@@ -121,28 +121,11 @@ class Image:
     @property
     def image_regions(self) -> List[str]:
         """
-        Get the image regions. Either configured in the image configuration
-        or all available regions.
-        If a region is listed that is not available in the currently used partition,
-        that region will be ignored (eg. having us-east-1 configured but running in the aws-cn
-        partition doesn't include us-east-1 here).
+        Get the image regions.
         """
         if not self._image_regions_cached:
-            # get all available regions
-            ec2client: EC2Client = boto3.client("ec2", region_name=self._s3.bucket_region)
-            resp = ec2client.describe_regions()
-            image_regions_all = [r["RegionName"] for r in resp["Regions"]]
-
-            if self.conf["regions"]:
-                # filter out regions that are not available in the current partition
-                image_regions_configured_set = set(self.conf["regions"])
-                image_regions_all_set = set(image_regions_all)
-                self._image_regions = list(image_regions_configured_set.intersection(image_regions_all_set))
-                diff = image_regions_configured_set.difference(image_regions_all_set)
-                if diff:
-                    logger.warning(f"configured regions {diff} not available in the current partition. Ignoring those.")
-            else:
-                self._image_regions = image_regions_all
+            regions_configured = self.conf["regions"] if "regions" in self.conf else []
+            self._image_regions = _get_regions(self._s3.bucket_region, regions_configured)
             self._image_regions_cached = True
         return self._image_regions
 
@@ -358,14 +341,8 @@ class Image:
         """
         Publish SNS notifiations about newly available images to subscribers
         """
-        for region in self.image_regions:
-            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
-            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
 
-            if not image_info:
-                logger.error(f"can not send SNS notification for {self.image_name} because no image found in {region}")
-                return
-            SNSNotification(self._ctx, self.image_name, region).publish()
+        SNSNotification(self._ctx, self.image_name).publish()
 
     def cleanup(self) -> None:
         """

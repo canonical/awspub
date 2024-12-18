@@ -143,6 +143,7 @@ def test_image___get_root_device_snapshot_id(root_device_name, block_device_mapp
         ("test-image-8", "aws-cn", True, True, False, True, False),
         ("test-image-10", "aws", False, False, False, False, True),
         ("test-image-11", "aws", False, False, False, False, True),
+        ("test-image-12", "aws", False, False, False, False, True),
     ],
 )
 def test_image_publish(
@@ -183,7 +184,6 @@ def test_image_publish(
             "Regions": [{"RegionName": "eu-central-1"}, {"RegionName": "us-east-1"}]
         }
         instance.list_buckets.return_value = {"Buckets": [{"Name": "bucket1"}]}
-        instance.list_topics.return_value = {"Topics": [{"TopicArn": "arn:aws:sns:topic1"}]}
         ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, imagename)
         img.publish()
