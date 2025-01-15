@@ -10,6 +10,10 @@ class MultipleImagesException(Exception):
     pass
 
 
+class IncompleteImageSetException(Exception):
+    pass
+
+
 class BucketDoesNotExistException(Exception):
     def __init__(self, bucket_name: str, *args, **kwargs):
         msg = f"The bucket named '{bucket_name}' does not exist. You will need to create the bucket before proceeding."

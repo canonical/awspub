@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import boto3
+import botocore.exceptions
 from mypy_boto3_ec2.client import EC2Client
 from mypy_boto3_ssm import SSMClient
 
@@ -418,6 +419,7 @@ class Image:
         )
 
         images: Dict[str, _ImageInfo] = dict()
+        missing_regions: List[str] = []
         for region in self.image_regions:
             ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
             image_info: Optional[_ImageInfo] = self._get(ec2client_region)
@@ -435,8 +437,10 @@ class Image:
                     )
                 images[region] = image_info
             else:
-                images[region] = self._register_image(snapshot_ids[region], region, ec2client_region)
-
+                if image := self._register_image(snapshot_ids[region], ec2client_region):
+                    images[region] = image
+                else:
+                    missing_regions.append(region)
         # wait for the images
         logger.info(f"Waiting for {len(images)} images to be ready the regions ...")
         for region, image_info in images.items():
@@ -455,9 +459,13 @@ class Image:
         if self.conf["share"]:
             self._share(self.conf["share"], images)
 
+        if missing_regions:
+            logger.error("Failed to publish images to all regions", extra={"missing_regions": missing_regions})
+            raise exceptions.IncompleteImageSetException("Incomplete image set published")
+
         return images
 
-    def _register_image(self, snapshot_id: str, ec2client: EC2Client) -> _ImageInfo:
+    def _register_image(self, snapshot_id: str, ec2client: EC2Client) -> Optional[_ImageInfo]:
         """
         Register snapshot_id in region configured for ec2client_region
 
@@ -508,7 +516,20 @@ class Image:
         if self.conf["billing_products"]:
             register_image_kwargs["BillingProducts"] = self.conf["billing_products"]
 
-        resp = ec2client.register_image(**register_image_kwargs)
+        try:
+            resp = ec2client.register_image(**register_image_kwargs)
+        except botocore.exceptions.ClientError as e:
+            if e.response.get("Error", {}).get("Code", None) == "OperationNotPermitted":
+                logger.exception(
+                    "Unable to register image",
+                    extra={
+                        "registration_options": register_image_kwargs,
+                        "region": ec2client.meta.region_name,
+                    },
+                )
+                return None
+            raise e
+
         ec2client.create_tags(Resources=[resp["ImageId"]], Tags=self._tags)
         return _ImageInfo(resp["ImageId"], snapshot_id)
 
