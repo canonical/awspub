@@ -435,52 +435,7 @@ class Image:
                     )
                 images[region] = image_info
             else:
-                logger.info(
-                    f"creating image with name '{self.image_name}' in "
-                    f"region {ec2client_region.meta.region_name} ..."
-                )
-
-                register_image_kwargs = dict(
-                    Name=self.image_name,
-                    Description=self.conf.get("description", ""),
-                    Architecture=self._ctx.conf["source"]["architecture"],
-                    RootDeviceName=self.conf["root_device_name"],
-                    BlockDeviceMappings=[
-                        {
-                            "Ebs": {
-                                "SnapshotId": snapshot_ids[region],
-                                "VolumeType": self.conf["root_device_volume_type"],
-                                "VolumeSize": self.conf["root_device_volume_size"],
-                            },
-                            "DeviceName": self.conf["root_device_name"],
-                        },
-                        # TODO: make those ephemeral block device mappings configurable
-                        {"VirtualName": "ephemeral0", "DeviceName": "/dev/sdb"},
-                        {"VirtualName": "ephemeral1", "DeviceName": "/dev/sdc"},
-                    ],
-                    EnaSupport=True,
-                    SriovNetSupport="simple",
-                    VirtualizationType="hvm",
-                    BootMode=self.conf["boot_mode"],
-                )
-
-                if self.conf["tpm_support"]:
-                    register_image_kwargs["TpmSupport"] = self.conf["tpm_support"]
-
-                if self.conf["imds_support"]:
-                    register_image_kwargs["ImdsSupport"] = self.conf["imds_support"]
-
-                if self.conf["uefi_data"]:
-                    with open(self.conf["uefi_data"], "r") as f:
-                        uefi_data = f.read()
-                    register_image_kwargs["UefiData"] = uefi_data
-
-                if self.conf["billing_products"]:
-                    register_image_kwargs["BillingProducts"] = self.conf["billing_products"]
-
-                resp = ec2client_region.register_image(**register_image_kwargs)
-                ec2client_region.create_tags(Resources=[resp["ImageId"]], Tags=self._tags)
-                images[region] = _ImageInfo(resp["ImageId"], snapshot_ids[region])
+                images[region] = self._register_image(snapshot_ids[region], region, ec2client_region)
 
         # wait for the images
         logger.info(f"Waiting for {len(images)} images to be ready the regions ...")
@@ -501,6 +456,61 @@ class Image:
             self._share(self.conf["share"], images)
 
         return images
+
+    def _register_image(self, snapshot_id: str, ec2client: EC2Client) -> _ImageInfo:
+        """
+        Register snapshot_id in region configured for ec2client_region
+
+        :param snapshot_id: snapshot id to use for image registration
+        :type snapshot_id: str
+        :param ec2client: EC2Client for the region to register image to
+        :type ec2client: EC2Client
+        :return: _ImageInfo containing the ImageId SnapshotId pair
+        :rtype: _ImageInfo
+        """
+        logger.info(f"creating image with name '{self.image_name}' in " f"region {ec2client.meta.region_name} ...")
+
+        register_image_kwargs = dict(
+            Name=self.image_name,
+            Description=self.conf.get("description", ""),
+            Architecture=self._ctx.conf["source"]["architecture"],
+            RootDeviceName=self.conf["root_device_name"],
+            BlockDeviceMappings=[
+                {
+                    "Ebs": {
+                        "SnapshotId": snapshot_id,
+                        "VolumeType": self.conf["root_device_volume_type"],
+                        "VolumeSize": self.conf["root_device_volume_size"],
+                    },
+                    "DeviceName": self.conf["root_device_name"],
+                },
+                # TODO: make those ephemeral block device mappings configurable
+                {"VirtualName": "ephemeral0", "DeviceName": "/dev/sdb"},
+                {"VirtualName": "ephemeral1", "DeviceName": "/dev/sdc"},
+            ],
+            EnaSupport=True,
+            SriovNetSupport="simple",
+            VirtualizationType="hvm",
+            BootMode=self.conf["boot_mode"],
+        )
+
+        if self.conf["tpm_support"]:
+            register_image_kwargs["TpmSupport"] = self.conf["tpm_support"]
+
+        if self.conf["imds_support"]:
+            register_image_kwargs["ImdsSupport"] = self.conf["imds_support"]
+
+        if self.conf["uefi_data"]:
+            with open(self.conf["uefi_data"], "r") as f:
+                uefi_data = f.read()
+            register_image_kwargs["UefiData"] = uefi_data
+
+        if self.conf["billing_products"]:
+            register_image_kwargs["BillingProducts"] = self.conf["billing_products"]
+
+        resp = ec2client.register_image(**register_image_kwargs)
+        ec2client.create_tags(Resources=[resp["ImageId"]], Tags=self._tags)
+        return _ImageInfo(resp["ImageId"], snapshot_id)
 
     def publish(self) -> None:
         """
