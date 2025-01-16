@@ -1,6 +1,7 @@
 import pathlib
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import botocore.exceptions
 import pytest
 
 from awspub import context, exceptions, image
@@ -494,3 +495,62 @@ def test_image__share_list_filtered(partition, imagename, share_list_expected):
         ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, imagename)
         assert img._share_list_filtered(img.conf["share"]) == share_list_expected
+
+
+@patch("awspub.s3.S3.bucket_region", return_value="region1")
+def test_create__should_allow_partial_registration(s3_bucket_mock):
+    """
+    Test that the create() method allows a partial upload set
+    """
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        img = image.Image(ctx, "test-image-6")
+        img._image_regions = ["region1", "region2"]
+        img._image_regions_cached = True
+        with patch.object(img, "_get") as get_mock, patch.object(img._snapshot, "copy") as copy_mock:
+            copy_mock.return_value = {r: f"snapshot{i}" for i, r in enumerate(img.image_regions)}
+            get_mock.return_value = None
+            instance.register_image.side_effect = [
+                botocore.exceptions.ClientError(
+                    {
+                        "Error": {
+                            "Code": "OperationNotPermitted",
+                            "Message": "Intentional permission failure for snapshot0",
+                        }
+                    },
+                    "awspub Testing",
+                ),
+                {"ImageId": "id1"},
+            ]
+            with pytest.raises(exceptions.IncompleteImageSetException):
+                img.create() == {"region2": image._ImageInfo("id1", "snapshot1")}
+        # register and create_tags should be called since at least one snapshot made it
+        assert instance.register_image.called
+        assert instance.create_tags.called
+
+
+def test_register_image__should_return_none_on_permission_failures():
+    instance = MagicMock()
+
+    instance.register_image.side_effect = botocore.exceptions.ClientError(
+        {"Error": {"Code": "OperationNotPermitted", "Message": "Testing"}}, "Testing"
+    )
+    ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+    img = image.Image(ctx, "test-image-6")
+    snapshot_ids = {"eu-central-1": "my-snapshot"}
+    assert img._register_image(snapshot_ids["eu-central-1"], instance) is None
+
+
+def test_register_image__should_raise_on_unhandled_client_error():
+    instance = MagicMock()
+
+    instance.register_image.side_effect = botocore.exceptions.ClientError(
+        {"Error": {"Code": "UnsupportedOperation", "Message": "Testing"}}, "Testing"
+    )
+    ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+    img = image.Image(ctx, "test-image-6")
+    snapshot_ids = {"eu-central-1": "my-snapshot"}
+    with pytest.raises(botocore.exceptions.ClientError):
+        img._register_image(snapshot_ids["eu-central-1"], instance) is None
