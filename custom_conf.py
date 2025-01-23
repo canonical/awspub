@@ -199,6 +199,7 @@ custom_excludes = [
     '.github',
     'readme.rst',
     'release-management.rst',
+    'SECURITY.md',
     ]
 
 # Add CSS files (located in .sphinx/_static/)
