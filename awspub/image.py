@@ -2,7 +2,7 @@ import hashlib
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
 import botocore.exceptions
@@ -145,23 +145,30 @@ class Image:
             tags.append({"Key": name, "Value": value})
         return tags
 
-    def _share_list_filtered(self, share_conf: List[str]) -> List[Dict[str, str]]:
+    def _share_list_filtered(self, share_conf: List[str]) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
         """
         Get a filtered list of share configurations based on the current partition
         :param share_conf: the share configuration
         :type share_conf: List[str]
         :return: a List of share configurations that is usable by modify_image_attribute()
-        :rtype: List[Dict[str, str]]
+        :rtype: Tuple[List[Dict[str, str]], List[Dict[str, str]]]
         """
         # the current partition
         partition_current = boto3.client("ec2").meta.partition
 
         share_list: List[Dict[str, str]] = []
+        volume_list: List[Dict[str, str]] = []
         for share in share_conf:
-            partition, account_id = _split_partition(share)
+            partition, account_id_or_arn = _split_partition(share)
             if partition == partition_current:
-                share_list.append({"UserId": account_id})
-        return share_list
+                if ":organization/o-" in account_id_or_arn:
+                    share_list.append({"OrganizationArn": account_id_or_arn})
+                elif ":ou/o-" in account_id_or_arn:
+                    share_list.append({"OrganizationalUnitArn": account_id_or_arn})
+                else:
+                    share_list.append({"UserId": account_id_or_arn})
+                    volume_list.append({"UserId": account_id_or_arn})
+        return share_list, volume_list
 
     def _share(self, share_conf: List[str], images: Dict[str, _ImageInfo]):
         """
@@ -172,7 +179,7 @@ class Image:
         :param images: a Dict with region names as keys and _ImageInfo objects as values
         :type images: Dict[str, _ImageInfo]
         """
-        share_list = self._share_list_filtered(share_conf)
+        share_list, volume_list = self._share_list_filtered(share_conf)
 
         if not share_list:
             logger.info("no valid accounts found for sharing in this partition, skipping")
@@ -188,11 +195,11 @@ class Image:
             )
 
             # modify snapshot permissions
-            if image_info.snapshot_id:
+            if image_info.snapshot_id and volume_list:
                 ec2client.modify_snapshot_attribute(
                     Attribute="createVolumePermission",
                     SnapshotId=image_info.snapshot_id,
-                    CreateVolumePermission={"Add": share_list},  # type: ignore
+                    CreateVolumePermission={"Add": volume_list},  # type: ignore
                 )
 
         logger.info(f"shared images & snapshots with '{share_conf}'")

@@ -199,6 +199,9 @@ In the above example, the image `my-custom-image` will be shared with the accoun
 when `awspub` runs in the commercial partition (``aws``, the default). It'll be shared
 with the account `456789012345` when `awspub` runs in the the china partition (``aws-cn``).
 
+Also sharing with an organization and organisation units is available by organization or organisational
+unit ARN (which already encodes partition).
+
 AWS Marketplace
 ~~~~~~~~~~~~~~~
 
