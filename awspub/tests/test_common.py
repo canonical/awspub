@@ -12,6 +12,30 @@ from awspub.common import _get_regions, _split_partition
         ("aws:123456789123", ("aws", "123456789123")),
         ("aws-cn:123456789123", ("aws-cn", "123456789123")),
         ("aws-us-gov:123456789123", ("aws-us-gov", "123456789123")),
+        (
+            "arn:aws:organizations::123456789012:organization/o-123example",
+            ("aws", "arn:aws:organizations::123456789012:organization/o-123example"),
+        ),
+        (
+            "arn:aws:organizations::123456789012:ou/o-123example/ou-1234-5example",
+            ("aws", "arn:aws:organizations::123456789012:ou/o-123example/ou-1234-5example"),
+        ),
+        (
+            "arn:aws-cn:organizations::123456789012:organization/o-123example",
+            ("aws-cn", "arn:aws-cn:organizations::123456789012:organization/o-123example"),
+        ),
+        (
+            "arn:aws-cn:organizations::123456789012:ou/o-123example/ou-1234-5example",
+            ("aws-cn", "arn:aws-cn:organizations::123456789012:ou/o-123example/ou-1234-5example"),
+        ),
+        (
+            "arn:aws-us-gov:organizations::123456789012:organization/o-123example",
+            ("aws-us-gov", "arn:aws-us-gov:organizations::123456789012:organization/o-123example"),
+        ),
+        (
+            "arn:aws-us-gov:organizations::123456789012:ou/o-123example/ou-1234-5example",
+            ("aws-us-gov", "arn:aws-us-gov:organizations::123456789012:ou/o-123example/ou-1234-5example"),
+        ),
     ],
 )
 def test_common__split_partition(input, expected_output):

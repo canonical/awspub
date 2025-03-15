@@ -10,3 +10,5 @@ awspub:
       share:
         - "123456789123"
         - "aws-cn:456789012345"
+        - "arn:aws:organizations::123456789012:organization/o-123example"
+        - "arn:aws-cn:organizations::334455667788:ou/o-123example/ou-1234-5example"
