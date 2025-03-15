@@ -1,4 +1,5 @@
 import pathlib
+import re
 from enum import Enum
 from typing import Dict, List, Literal, Optional
 
@@ -161,8 +162,8 @@ class ConfigImageModel(BaseModel):
     )
     imds_support: Optional[Literal["v2.0"]] = Field(description="Optional IMDS support", default=None)
     share: Optional[List[str]] = Field(
-        description="Optional list of account IDs the image and snapshot will be shared with. The account"
-        "ID can be prefixed with the partition and separated by ':'. Eg 'aws-cn:123456789123'",
+        description="Optional list of account IDs, organization ARN, OU ARN the image and snapshot will be shared with."
+        " The account ID can be prefixed with the partition and separated by ':'. Eg 'aws-cn:123456789123'",
         default=None,
     )
     temporary: Optional[bool] = Field(
@@ -193,11 +194,25 @@ class ConfigImageModel(BaseModel):
         """
         Make sure the account IDs are valid and if given the partition is correct
         """
+        patterns = [
+            # https://docs.aws.amazon.com/organizations/latest/APIReference/API_Account.html
+            r"\d{12}",
+            # Adjusted for partitions
+            # https://docs.aws.amazon.com/organizations/latest/APIReference/API_Organization.html
+            r"arn:aws(?:-cn)?(?:-us-gov)?:organizations::\d{12}:organization\/o-[a-z0-9]{10,32}",
+            # https://docs.aws.amazon.com/organizations/latest/APIReference/API_OrganizationalUnit.html
+            r"arn:aws(?:-cn)?(?:-us-gov)?:organizations::\d{12}:ou\/o-[a-z0-9]{10,32}\/ou-[0-9a-z]{4,32}-[0-9a-z]{8,32}",  # noqa:E501
+        ]
         if v is not None:
             for val in v:
-                partition, account_id = _split_partition(val)
-                if len(account_id) != 12:
-                    raise ValueError("Account ID must be 12 characters long")
+                partition, account_id_or_arn = _split_partition(val)
+                valid = False
+                for pattern in patterns:
+                    if re.fullmatch(pattern, account_id_or_arn):
+                        valid = True
+                        break
+                if not valid:
+                    raise ValueError("Account ID must be 12 digits long or an ARN for Organization or OU")
                 if partition not in ["aws", "aws-cn", "aws-us-gov"]:
                     raise ValueError("Partition must be one of 'aws', 'aws-cn', 'aws-us-gov'")
         return v

@@ -15,13 +15,20 @@ def _split_partition(val: str) -> Tuple[str, str]:
     :return: the partition and the resource
     :rtype: Tuple[str, str]
     """
-    if ":" in val:
-        partition, resource = val.split(":")
-    else:
-        # if no partition is given, assume default commercial partition "aws"
-        partition = "aws"
-        resource = val
-    return partition, resource
+
+    # ARNs encode partition https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
+    if val.startswith("arn:"):
+        arn, partition, resource = val.split(":", maxsplit=2)
+        # Return extracted partition, but keep full ARN intact
+        return partition, val
+
+    # Partition prefix
+    if ":" in val and val.startswith("aws"):
+        partition, resource = val.split(":", maxsplit=1)
+        return partition, resource
+
+    # if no partition is given, assume default commercial partition "aws"
+    return "aws", val
 
 
 def _get_regions(region_to_query: str, regions_allowlist: List[str]) -> List[str]:

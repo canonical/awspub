@@ -478,14 +478,38 @@ def test_image__verify(image_found, config, config_image_name, expected_problems
 
 
 @pytest.mark.parametrize(
-    "partition,imagename,share_list_expected",
+    "partition,imagename,share_list_expected,volume_list_expected",
     [
-        ("aws", "test-image-8", [{"UserId": "123456789123"}, {"UserId": "221020170000"}, {"UserId": "290620200000"}]),
-        ("aws-cn", "test-image-8", [{"UserId": "334455667788"}]),
-        ("aws-us-gov", "test-image-8", []),
+        (
+            "aws",
+            "test-image-8",
+            [
+                {"UserId": "123456789123"},
+                {"UserId": "221020170000"},
+                {"UserId": "290620200000"},
+                {"OrganizationArn": "arn:aws:organizations::123456789012:organization/o-123example"},
+            ],
+            [
+                {"UserId": "123456789123"},
+                {"UserId": "221020170000"},
+                {"UserId": "290620200000"},
+            ],
+        ),
+        (
+            "aws-cn",
+            "test-image-8",
+            [
+                {"UserId": "334455667788"},
+                {"OrganizationalUnitArn": "arn:aws-cn:organizations::334455667788:ou/o-123example/ou-1234-5example"},
+            ],
+            [
+                {"UserId": "334455667788"},
+            ],
+        ),
+        ("aws-us-gov", "test-image-8", [], []),
     ],
 )
-def test_image__share_list_filtered(partition, imagename, share_list_expected):
+def test_image__share_list_filtered(partition, imagename, share_list_expected, volume_list_expected):
     """
     Test _share_list_filtered() for a given image
     """
@@ -494,7 +518,7 @@ def test_image__share_list_filtered(partition, imagename, share_list_expected):
         instance.meta.partition = partition
         ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, imagename)
-        assert img._share_list_filtered(img.conf["share"]) == share_list_expected
+        assert img._share_list_filtered(img.conf["share"]) == (share_list_expected, volume_list_expected)
 
 
 @patch("awspub.s3.S3.bucket_region", return_value="region1")
