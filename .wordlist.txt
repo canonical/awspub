@@ -36,6 +36,7 @@ namespaces
 NodePort
 Numbat
 observability
+organization
 OEM
 OLM
 Permalink
