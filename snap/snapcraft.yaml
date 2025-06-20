@@ -10,6 +10,7 @@ description: |
   Note: this snap is provided and maintained by Canonical!
   (**not** by Amazon/AWS)
 version: git
+adopt-info: awspub
 base: core24
 confinement: strict
 license: GPL-3.0
@@ -55,3 +56,6 @@ parts:
     source: .
     build-packages:
       - git
+    override-pull: |
+      craftctl default
+      craftctl set version=$(git describe --tags)
