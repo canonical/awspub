@@ -143,23 +143,3 @@ def cleanup(config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[
     ctx = Context(config, config_mapping)
     for image_name, image in _images_filtered(ctx, group):
         image.cleanup()
-
-
-def verify(config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[str]) -> Dict[str, Dict]:
-    """
-    Verify available images in the partition of the used account based on
-    the given configuration file.
-    This is EXPERIMENTAL and doesn't work reliable yet!
-
-    :param config: the configuration file path
-    :type config: pathlib.Path
-    :param config_mapping: the config template mapping file path
-    :type config_mapping: pathlib.Path
-    :param group: only handles images from given group
-    :type group: Optional[str]
-    """
-    problems: Dict[str, Dict] = dict()
-    ctx = Context(config, config_mapping)
-    for image_name, image in _images_filtered(ctx, group):
-        problems[image_name] = image.verify()
-    return problems
