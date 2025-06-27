@@ -427,57 +427,6 @@ def test_image__put_ssm_parameters(
 
 
 @pytest.mark.parametrize(
-    "image_found,config,config_image_name, expected_problems",
-    [
-        # image not available
-        ([], "fixtures/config1.yaml", "test-image-6", [image.ImageVerificationErrors.NOT_EXIST]),
-        # image matches expectations from config
-        (
-            [
-                {
-                    "Name": "test-image-6",
-                    "State": "available",
-                    "ImageId": "ami-123",
-                    "RootDeviceName": "/dev/sda1",
-                    "RootDeviceType": "ebs",
-                    "BootMode": "uefi-preferred",
-                    "BlockDeviceMappings": [
-                        {
-                            "DeviceName": "/dev/sda1",
-                            "Ebs": {
-                                "DeleteOnTermination": True,
-                                "VolumeType": "gp3",
-                                "VolumeSize": 8,
-                                "SnapshotId": "snap-123",
-                            },
-                        },
-                    ],
-                    "Tags": [
-                        {"Key": "name", "Value": "foobar"},
-                    ],
-                }
-            ],
-            "fixtures/config1.yaml",
-            "test-image-6",
-            [],
-        ),
-    ],
-)
-def test_image__verify(image_found, config, config_image_name, expected_problems):
-    """
-    Test _verify() for a given image and configuration
-    """
-    with patch("boto3.client") as bclient_mock:
-        instance = bclient_mock.return_value
-        instance.describe_images.return_value = {"Images": image_found}
-        instance.describe_snapshots.return_value = {"Snapshots": [{"State": "completed"}]}
-        ctx = context.Context(curdir / config, None)
-        img = image.Image(ctx, config_image_name)
-        problems = img._verify("eu-central-1")
-        assert problems == expected_problems
-
-
-@pytest.mark.parametrize(
     "partition,imagename,share_list_expected,volume_list_expected",
     [
         (

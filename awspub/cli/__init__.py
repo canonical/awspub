@@ -31,14 +31,6 @@ def _list(args) -> None:
     args.output.write(images_json)
 
 
-def _verify(args) -> None:
-    """
-    Verify available images against configuration
-    """
-    problems = awspub.verify(args.config, args.config_mapping, args.group)
-    args.output.write((json.dumps({"problems": problems}, indent=4)))
-
-
 def _cleanup(args) -> None:
     """
     Cleanup available images
@@ -79,17 +71,6 @@ def _parser():
     p_list.add_argument("--group", type=str, help="only handles images from given group")
     p_list.add_argument("config", type=pathlib.Path, help="the image configuration file path")
     p_list.set_defaults(func=_list)
-
-    # verify
-    p_verify = p_sub.add_parser("verify", help="Verify images")
-    p_verify.add_argument(
-        "--output", type=argparse.FileType("w+"), help="output file path. defaults to stdout", default=sys.stdout
-    )
-    p_verify.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
-    p_verify.add_argument("--group", type=str, help="only handles images from given group")
-    p_verify.add_argument("config", type=pathlib.Path, help="the image configuration file path")
-
-    p_verify.set_defaults(func=_verify)
 
     # cleanup
     p_cleanup = p_sub.add_parser("cleanup", help="Cleanup images")
