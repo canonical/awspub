@@ -20,14 +20,14 @@ jobs:
       - name: Install tox and any other packages
         run: |
           pip3 install tox
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Run tox
         # Run tox using the version of Python in `PATH`
         run: tox
   snap:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-tags: true
         fetch-depth: 0
