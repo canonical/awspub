@@ -313,6 +313,7 @@ class Image:
             ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
             image_info: Optional[_ImageInfo] = self._get(ec2client_region)
             if image_info:
+                logger.info(f"publishing {self.image_name} in region {region}")
                 ec2client_region.modify_image_attribute(
                     ImageId=image_info.image_id,
                     LaunchPermission={
