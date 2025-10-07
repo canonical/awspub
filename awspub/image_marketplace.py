@@ -37,7 +37,7 @@ class ImageMarketplace:
         """
         entity = self._mpclient.describe_entity(Catalog="AWSMarketplace", EntityId=self.conf["entity_id"])
         # check if the version already exists
-        for version in entity["DetailsDocument"]["Versions"]:
+        for version in entity["DetailsDocument"].get("Versions", []):
             if version["VersionTitle"] == self.conf["version_title"]:
                 logger.info(f"Marketplace version '{self.conf['version_title']}' already exists. Do nothing")
                 return
