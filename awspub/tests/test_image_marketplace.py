@@ -30,6 +30,19 @@ def test_image_marketplace_request_new_version(imagename, new_version, called_st
         assert instance.start_change_set.called == called_start_change_set
 
 
+def test_image_marketplace_request_new_version_none_exists():
+    """
+    Test the request_new_version logic if no version exist already
+    """
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+        instance.describe_entity.return_value = {"DetailsDocument": {}}
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        img = image_marketplace.ImageMarketplace(ctx, "test-image-8")
+        img.request_new_version("ami-123")
+        assert instance.start_change_set.called is True
+
+
 @pytest.mark.parametrize(
     "name,expected",
     [
