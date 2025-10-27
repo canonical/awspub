@@ -89,7 +89,7 @@ Parameter substitution
 ~~~~~~~~~~~~~~~~~~~~~~
 
 There are cases where parts of the configuration file need to be dynamic. To support that
-`awspub` provides basic template substitution (based on Python's `string.Template class <https://docs.python.org/3/library/string.html#template-strings>`_) .
+`awspub` provides basic template substitution (based on Python's `string.Template class <https://docs.python.org/3/library/string.html#template-strings-strings>`_) .
 
 .. literalinclude:: ../config-samples/config-with-parameters.yaml
    :language: yaml
