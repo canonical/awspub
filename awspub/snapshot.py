@@ -1,10 +1,10 @@
 import logging
 from typing import Dict, List, Optional
 
-import boto3
 from mypy_boto3_ec2.client import EC2Client
 
 from awspub import exceptions
+from awspub.common import _get_client
 from awspub.context import Context
 
 logger = logging.getLogger(__name__)
@@ -184,7 +184,7 @@ class Snapshot:
         """
 
         # does the snapshot with that name already exist in the destination region?
-        ec2client_dest: EC2Client = boto3.client("ec2", region_name=destination_region)
+        ec2client_dest: EC2Client = _get_client("ec2", region_name=destination_region)
         snapshot_id: Optional[str] = self._get(ec2client_dest, snapshot_name)
         if snapshot_id:
             logger.info(
@@ -193,7 +193,7 @@ class Snapshot:
             )
             return snapshot_id
 
-        ec2client_source: EC2Client = boto3.client("ec2", region_name=source_region)
+        ec2client_source: EC2Client = _get_client("ec2", region_name=source_region)
         source_snapshot_id: Optional[str] = self._get(ec2client_source, snapshot_name)
         if not source_snapshot_id:
             raise ValueError(
@@ -233,7 +233,7 @@ class Snapshot:
 
         logger.info(f"Waiting for {len(snapshot_ids)} snapshots to appear in the destination regions ...")
         for destination_region, snapshot_id in snapshot_ids.items():
-            ec2client_dest = boto3.client("ec2", region_name=destination_region)
+            ec2client_dest = _get_client("ec2", region_name=destination_region)
             waiter = ec2client_dest.get_waiter("snapshot_completed")
             logger.info(f"Waiting for {snapshot_id} in {ec2client_dest.meta.region_name} to complete ...")
             waiter.wait(SnapshotIds=[snapshot_id], WaiterConfig={"Delay": 30, "MaxAttempts": 90})

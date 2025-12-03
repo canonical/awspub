@@ -4,13 +4,12 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-import boto3
 import botocore.exceptions
 from mypy_boto3_ec2.client import EC2Client
 from mypy_boto3_ssm import SSMClient
 
 from awspub import exceptions
-from awspub.common import _get_regions, _split_partition
+from awspub.common import _get_client, _get_regions, _split_partition
 from awspub.context import Context
 from awspub.image_marketplace import ImageMarketplace
 from awspub.s3 import S3
@@ -154,7 +153,7 @@ class Image:
         :rtype: Tuple[List[Dict[str, str]], List[Dict[str, str]]]
         """
         # the current partition
-        partition_current = boto3.client("ec2").meta.partition
+        partition_current = _get_client("ec2").meta.partition
 
         share_list: List[Dict[str, str]] = []
         volume_list: List[Dict[str, str]] = []
@@ -186,7 +185,7 @@ class Image:
             return
 
         for region, image_info in images.items():
-            ec2client: EC2Client = boto3.client("ec2", region_name=region)
+            ec2client: EC2Client = _get_client("ec2", region_name=region)
             # modify image permissions
             ec2client.modify_image_attribute(
                 Attribute="LaunchPermission",
@@ -264,7 +263,7 @@ class Image:
         """
         logger.info(f"Pushing SSM parameters for image {self.image_name} in {len(self.image_regions)} regions ...")
         for region in self.image_regions:
-            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+            ec2client_region: EC2Client = _get_client("ec2", region_name=region)
             image_info: Optional[_ImageInfo] = self._get(ec2client_region)
 
             # image in region not found
@@ -272,7 +271,7 @@ class Image:
                 logger.error(f"image {self.image_name} not available in region {region}. can not push SSM parameter")
                 continue
 
-            ssmclient_region: SSMClient = boto3.client("ssm", region_name=region)
+            ssmclient_region: SSMClient = _get_client("ssm", region_name=region)
             # iterate over all defined parameters
             for parameter in self.conf["ssm_parameter"]:
                 # if overwrite is not allowed, check if the parameter is already there and if so, do nothing
@@ -310,7 +309,7 @@ class Image:
         logger.info(f"Make image {self.image_name} in {len(self.image_regions)} regions public ...")
 
         for region in self.image_regions:
-            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+            ec2client_region: EC2Client = _get_client("ec2", region_name=region)
             image_info: Optional[_ImageInfo] = self._get(ec2client_region)
             if image_info:
                 logger.info(f"publishing {self.image_name} in region {region}")
@@ -371,7 +370,7 @@ class Image:
         # do the cleanup - the image is marked as temporary
         logger.info(f"Cleanup image {self.image_name} ...")
         for region in self.image_regions:
-            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+            ec2client_region: EC2Client = _get_client("ec2", region_name=region)
             image_info: Optional[_ImageInfo] = self._get(ec2client_region)
 
             if image_info:
@@ -400,7 +399,7 @@ class Image:
         """
         images: Dict[str, _ImageInfo] = dict()
         for region in self.image_regions:
-            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+            ec2client_region: EC2Client = _get_client("ec2", region_name=region)
             image_info: Optional[_ImageInfo] = self._get(ec2client_region)
             if image_info:
                 images[region] = image_info
@@ -416,7 +415,7 @@ class Image:
         :rtype: Dict[str, _ImageInfo]
         """
         # this **must** be the region that is used for S3
-        ec2client: EC2Client = boto3.client("ec2", region_name=self._s3.bucket_region)
+        ec2client: EC2Client = _get_client("ec2", region_name=self._s3.bucket_region)
 
         # make sure the initial snapshot exists
         self._snapshot.create(ec2client, self.snapshot_name)
@@ -429,7 +428,7 @@ class Image:
         images: Dict[str, _ImageInfo] = dict()
         missing_regions: List[str] = []
         for region in self.image_regions:
-            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+            ec2client_region: EC2Client = _get_client("ec2", region_name=region)
             image_info: Optional[_ImageInfo] = self._get(ec2client_region)
             if image_info:
                 if image_info.snapshot_id != snapshot_ids[region]:
@@ -452,7 +451,7 @@ class Image:
         # wait for the images
         logger.info(f"Waiting for {len(images)} images to be ready the regions ...")
         for region, image_info in images.items():
-            ec2client_region_wait: EC2Client = boto3.client("ec2", region_name=region)
+            ec2client_region_wait: EC2Client = _get_client("ec2", region_name=region)
             logger.info(
                 f"Waiting for {image_info.image_id} in {ec2client_region_wait.meta.region_name} "
                 "to exist/be available ..."
@@ -567,11 +566,11 @@ class Image:
         # handle marketplace publication
         if self.conf["marketplace"]:
             # the "marketplace" configuration is only valid in the "aws" partition
-            partition = boto3.client("ec2").meta.partition
+            partition = _get_client("ec2").meta.partition
             if partition == "aws":
                 logger.info(f"marketplace version request for {self.image_name}")
                 # image needs to be in us-east-1
-                ec2client: EC2Client = boto3.client("ec2", region_name="us-east-1")
+                ec2client: EC2Client = _get_client("ec2", region_name="us-east-1")
                 image_info: Optional[_ImageInfo] = self._get(ec2client)
                 if image_info:
                     im = ImageMarketplace(self._ctx, self.image_name)

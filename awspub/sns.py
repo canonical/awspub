@@ -6,12 +6,11 @@ import json
 import logging
 from typing import Any, Dict, List
 
-import boto3
 from botocore.exceptions import ClientError
 from mypy_boto3_sns.client import SNSClient
 from mypy_boto3_sts.client import STSClient
 
-from awspub.common import _get_regions
+from awspub.common import _get_client, _get_regions
 from awspub.context import Context
 from awspub.exceptions import AWSAuthorizationException, AWSNotificationException
 from awspub.s3 import S3
@@ -65,7 +64,7 @@ class SNSNotification(object):
         :rtype: str
         """
 
-        stsclient: STSClient = boto3.client("sts", region_name=region_name)
+        stsclient: STSClient = _get_client("sts", region_name=region_name)
         resp = stsclient.get_caller_identity()
 
         account = resp["Account"]
@@ -82,7 +81,7 @@ class SNSNotification(object):
         for topic in self.conf:
             for topic_name, topic_config in topic.items():
                 for region_name in self._sns_regions(topic_config):
-                    snsclient: SNSClient = boto3.client("sns", region_name=region_name)
+                    snsclient: SNSClient = _get_client("sns", region_name=region_name)
                     try:
                         snsclient.publish(
                             TopicArn=self._get_topic_arn(topic_name, region_name),
