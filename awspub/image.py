@@ -10,7 +10,11 @@ from mypy_boto3_ec2.client import EC2Client
 from mypy_boto3_ssm import SSMClient
 
 from awspub import exceptions
-from awspub.common import _get_regions, _split_partition
+from awspub.common import (
+    _get_regions,
+    _maybe_continue_on_region_error,
+    _split_partition,
+)
 from awspub.context import Context
 from awspub.image_marketplace import ImageMarketplace
 from awspub.s3 import S3
@@ -64,6 +68,7 @@ class Image:
 
         self._snapshot: Snapshot = Snapshot(context)
         self._s3: S3 = S3(context)
+        self._allow_partial_region = getattr(self._ctx, "allow_partial_region", False)
 
     def __repr__(self):
         return f"<{self.__class__} :'{self.image_name}' (snapshot name: {self.snapshot_name})"
@@ -185,22 +190,26 @@ class Image:
             logger.info("no valid accounts found for sharing in this partition, skipping")
             return
 
-        for region, image_info in images.items():
-            ec2client: EC2Client = boto3.client("ec2", region_name=region)
-            # modify image permissions
-            ec2client.modify_image_attribute(
-                Attribute="LaunchPermission",
-                ImageId=image_info.image_id,
-                LaunchPermission={"Add": share_list},  # type: ignore
-            )
-
-            # modify snapshot permissions
-            if image_info.snapshot_id and volume_list:
-                ec2client.modify_snapshot_attribute(
-                    Attribute="createVolumePermission",
-                    SnapshotId=image_info.snapshot_id,
-                    CreateVolumePermission={"Add": volume_list},  # type: ignore
+        for region, image_info in list(images.items()):
+            try:
+                ec2client: EC2Client = boto3.client("ec2", region_name=region)
+                # modify image permissions
+                ec2client.modify_image_attribute(
+                    Attribute="LaunchPermission",
+                    ImageId=image_info.image_id,
+                    LaunchPermission={"Add": share_list},  # type: ignore
                 )
+
+                # modify snapshot permissions
+                if image_info.snapshot_id and volume_list:
+                    ec2client.modify_snapshot_attribute(
+                        Attribute="createVolumePermission",
+                        SnapshotId=image_info.snapshot_id,
+                        CreateVolumePermission={"Add": volume_list},  # type: ignore
+                    )
+            except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as exc:
+                _maybe_continue_on_region_error(self._allow_partial_region, region, exc)
+                images.pop(region, None)
 
         logger.info(f"shared images & snapshots with '{share_conf}'")
 
@@ -264,44 +273,47 @@ class Image:
         """
         logger.info(f"Pushing SSM parameters for image {self.image_name} in {len(self.image_regions)} regions ...")
         for region in self.image_regions:
-            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
-            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+            try:
+                ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+                image_info: Optional[_ImageInfo] = self._get(ec2client_region)
 
-            # image in region not found
-            if not image_info:
-                logger.error(f"image {self.image_name} not available in region {region}. can not push SSM parameter")
-                continue
+                # image in region not found
+                if not image_info:
+                    logger.error(f"image {self.image_name} not available in region {region}. can not push SSM parameter")
+                    continue
 
-            ssmclient_region: SSMClient = boto3.client("ssm", region_name=region)
-            # iterate over all defined parameters
-            for parameter in self.conf["ssm_parameter"]:
-                # if overwrite is not allowed, check if the parameter is already there and if so, do nothing
-                if not parameter["allow_overwrite"]:
-                    resp = ssmclient_region.get_parameters(Names=[parameter["name"]])
-                    if len(resp["Parameters"]) >= 1:
-                        # sanity check if the available parameter matches the value we would (but don't) push
-                        if resp["Parameters"][0]["Value"] != image_info.image_id:
-                            logger.warning(
-                                f"SSM parameter {parameter['name']} exists but value does not match "
-                                f"(found {resp['Parameters'][0]['Value']}; expected: {image_info.image_id}"
-                            )
-                        # parameter exists already and overwrite is not allowed so continue
-                        continue
-                # push parameter to store
-                ssmclient_region.put_parameter(
-                    Name=parameter["name"],
-                    Description=parameter.get("description", ""),
-                    Value=image_info.image_id,
-                    Type="String",
-                    Overwrite=parameter["allow_overwrite"],
-                    DataType="aws:ec2:image",
-                    # TODO: tags can't be used together with overwrite
-                    # Tags=self._ctx.tags,
-                )
+                ssmclient_region: SSMClient = boto3.client("ssm", region_name=region)
+                # iterate over all defined parameters
+                for parameter in self.conf["ssm_parameter"]:
+                    # if overwrite is not allowed, check if the parameter is already there and if so, do nothing
+                    if not parameter["allow_overwrite"]:
+                        resp = ssmclient_region.get_parameters(Names=[parameter["name"]])
+                        if len(resp["Parameters"]) >= 1:
+                            # sanity check if the available parameter matches the value we would (but don't) push
+                            if resp["Parameters"][0]["Value"] != image_info.image_id:
+                                logger.warning(
+                                    f"SSM parameter {parameter['name']} exists but value does not match "
+                                    f"(found {resp['Parameters'][0]['Value']}; expected: {image_info.image_id}"
+                                )
+                            # parameter exists already and overwrite is not allowed so continue
+                            continue
+                    # push parameter to store
+                    ssmclient_region.put_parameter(
+                        Name=parameter["name"],
+                        Description=parameter.get("description", ""),
+                        Value=image_info.image_id,
+                        Type="String",
+                        Overwrite=parameter["allow_overwrite"],
+                        DataType="aws:ec2:image",
+                        # TODO: tags can't be used together with overwrite
+                        # Tags=self._ctx.tags,
+                    )
 
-                logger.info(
-                    f"pushed SSM parameter {parameter['name']} with value {image_info.image_id} in region {region}"
-                )
+                    logger.info(
+                        f"pushed SSM parameter {parameter['name']} with value {image_info.image_id} in region {region}"
+                    )
+            except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as exc:
+                _maybe_continue_on_region_error(self._allow_partial_region, region, exc)
 
     def _public(self) -> None:
         """
@@ -310,41 +322,44 @@ class Image:
         logger.info(f"Make image {self.image_name} in {len(self.image_regions)} regions public ...")
 
         for region in self.image_regions:
-            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
-            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
-            if image_info:
-                logger.info(f"publishing {self.image_name} in region {region}")
-                ec2client_region.modify_image_attribute(
-                    ImageId=image_info.image_id,
-                    LaunchPermission={
-                        "Add": [
-                            {
-                                "Group": "all",
-                            },
-                        ],
-                    },
-                )
-                logger.info(f"image {image_info.image_id} in region {region} public now")
+            try:
+                ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+                image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+                if image_info:
+                    logger.info(f"publishing {self.image_name} in region {region}")
+                    ec2client_region.modify_image_attribute(
+                        ImageId=image_info.image_id,
+                        LaunchPermission={
+                            "Add": [
+                                {
+                                    "Group": "all",
+                                },
+                            ],
+                        },
+                    )
+                    logger.info(f"image {image_info.image_id} in region {region} public now")
 
-                if image_info.snapshot_id:
-                    ec2client_region.modify_snapshot_attribute(
-                        SnapshotId=image_info.snapshot_id,
-                        Attribute="createVolumePermission",
-                        GroupNames=[
-                            "all",
-                        ],
-                        OperationType="add",
-                    )
-                    logger.info(
-                        f"snapshot {image_info.snapshot_id} ({image_info.image_id}) in region {region} public now"
-                    )
+                    if image_info.snapshot_id:
+                        ec2client_region.modify_snapshot_attribute(
+                            SnapshotId=image_info.snapshot_id,
+                            Attribute="createVolumePermission",
+                            GroupNames=[
+                                "all",
+                            ],
+                            OperationType="add",
+                        )
+                        logger.info(
+                            f"snapshot {image_info.snapshot_id} ({image_info.image_id}) in region {region} public now"
+                        )
+                    else:
+                        logger.error(
+                            f"snapshot for image {self.image_name} ({image_info.image_id}) not available "
+                            f"in region {region}. can not make public"
+                        )
                 else:
-                    logger.error(
-                        f"snapshot for image {self.image_name} ({image_info.image_id}) not available "
-                        f"in region {region}. can not make public"
-                    )
-            else:
-                logger.error(f"image {self.image_name} not available in region {region}. can not make public")
+                    logger.error(f"image {self.image_name} not available in region {region}. can not make public")
+            except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as exc:
+                _maybe_continue_on_region_error(self._allow_partial_region, region, exc)
 
     def _sns_publish(self) -> None:
         """
@@ -371,24 +386,27 @@ class Image:
         # do the cleanup - the image is marked as temporary
         logger.info(f"Cleanup image {self.image_name} ...")
         for region in self.image_regions:
-            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
-            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+            try:
+                ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+                image_info: Optional[_ImageInfo] = self._get(ec2client_region)
 
-            if image_info:
-                resp = ec2client_region.describe_images(
-                    Filters=[
-                        {"Name": "image-id", "Values": [image_info.image_id]},
-                    ]
-                )
-                if resp["Images"][0]["Public"] is True:
-                    # this shouldn't happen because the image is marked as temporary in the config
-                    # so how can it be public?
-                    logger.error(
-                        f"no cleanup for {self.image_name} in {region} because ({image_info.image_id}) image is public"
+                if image_info:
+                    resp = ec2client_region.describe_images(
+                        Filters=[
+                            {"Name": "image-id", "Values": [image_info.image_id]},
+                        ]
                     )
-                else:
-                    ec2client_region.deregister_image(ImageId=image_info.image_id)
-                    logger.info(f"{self.image_name} in {region} ({image_info.image_id}) deleted")
+                    if resp["Images"][0]["Public"] is True:
+                        # this shouldn't happen because the image is marked as temporary in the config
+                        # so how can it be public?
+                        logger.error(
+                            f"no cleanup for {self.image_name} in {region} because ({image_info.image_id}) image is public"
+                        )
+                    else:
+                        ec2client_region.deregister_image(ImageId=image_info.image_id)
+                        logger.info(f"{self.image_name} in {region} ({image_info.image_id}) deleted")
+            except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as exc:
+                _maybe_continue_on_region_error(self._allow_partial_region, region, exc)
 
     def list(self) -> Dict[str, _ImageInfo]:
         """
@@ -400,12 +418,15 @@ class Image:
         """
         images: Dict[str, _ImageInfo] = dict()
         for region in self.image_regions:
-            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
-            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
-            if image_info:
-                images[region] = image_info
-            else:
-                logger.warning(f"image {self.image_name} not available in region {region}")
+            try:
+                ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+                image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+                if image_info:
+                    images[region] = image_info
+                else:
+                    logger.warning(f"image {self.image_name} not available in region {region}")
+            except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as exc:
+                _maybe_continue_on_region_error(self._allow_partial_region, region, exc)
         return images
 
     def create(self) -> Dict[str, _ImageInfo]:
@@ -423,44 +444,53 @@ class Image:
 
         # make sure the snapshot exist in all required regions
         snapshot_ids: Dict[str, str] = self._snapshot.copy(
-            self.snapshot_name, self._s3.bucket_region, self.image_regions
+            self.snapshot_name, self._s3.bucket_region, self.image_regions, self._allow_partial_region
         )
 
         images: Dict[str, _ImageInfo] = dict()
         missing_regions: List[str] = []
         for region in self.image_regions:
-            ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
-            image_info: Optional[_ImageInfo] = self._get(ec2client_region)
-            if image_info:
-                if image_info.snapshot_id != snapshot_ids[region]:
-                    logger.warning(
-                        f"image with name '{self.image_name}' already exists ({image_info.image_id}) "
-                        f"in region {ec2client_region.meta.region_name} but the root device "
-                        f"snapshot id is unexpected (got {image_info.snapshot_id} but expected {snapshot_ids[region]})"
-                    )
+            if region not in snapshot_ids:
+                missing_regions.append(region)
+                continue
+            try:
+                ec2client_region: EC2Client = boto3.client("ec2", region_name=region)
+                image_info: Optional[_ImageInfo] = self._get(ec2client_region)
+                if image_info:
+                    if image_info.snapshot_id != snapshot_ids[region]:
+                        logger.warning(
+                            f"image with name '{self.image_name}' already exists ({image_info.image_id}) "
+                            f"in region {ec2client_region.meta.region_name} but the root device "
+                            f"snapshot id is unexpected (got {image_info.snapshot_id} but expected {snapshot_ids[region]})"
+                        )
+                    else:
+                        logger.info(
+                            f"image with name '{self.image_name}' already exists ({image_info.image_id}) "
+                            f"in region {ec2client_region.meta.region_name}"
+                        )
+                    images[region] = image_info
                 else:
-                    logger.info(
-                        f"image with name '{self.image_name}' already exists ({image_info.image_id}) "
-                        f"in region {ec2client_region.meta.region_name}"
-                    )
-                images[region] = image_info
-            else:
-                if image := self._register_image(snapshot_ids[region], ec2client_region):
-                    images[region] = image
-                else:
-                    missing_regions.append(region)
+                    if image := self._register_image(snapshot_ids[region], ec2client_region):
+                        images[region] = image
+                    else:
+                        missing_regions.append(region)
+            except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as exc:
+                _maybe_continue_on_region_error(self._allow_partial_region, region, exc)
         # wait for the images
         logger.info(f"Waiting for {len(images)} images to be ready the regions ...")
         for region, image_info in images.items():
-            ec2client_region_wait: EC2Client = boto3.client("ec2", region_name=region)
-            logger.info(
-                f"Waiting for {image_info.image_id} in {ec2client_region_wait.meta.region_name} "
-                "to exist/be available ..."
-            )
-            waiter_exists = ec2client_region_wait.get_waiter("image_exists")
-            waiter_exists.wait(ImageIds=[image_info.image_id])
-            waiter_available = ec2client_region_wait.get_waiter("image_available")
-            waiter_available.wait(ImageIds=[image_info.image_id])
+            try:
+                ec2client_region_wait: EC2Client = boto3.client("ec2", region_name=region)
+                logger.info(
+                    f"Waiting for {image_info.image_id} in {ec2client_region_wait.meta.region_name} "
+                    "to exist/be available ..."
+                )
+                waiter_exists = ec2client_region_wait.get_waiter("image_exists")
+                waiter_exists.wait(ImageIds=[image_info.image_id])
+                waiter_available = ec2client_region_wait.get_waiter("image_available")
+                waiter_available.wait(ImageIds=[image_info.image_id])
+            except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as exc:
+                _maybe_continue_on_region_error(self._allow_partial_region, region, exc)
         logger.info(f"{len(images)} images are ready")
 
         # share
@@ -468,8 +498,14 @@ class Image:
             self._share(self.conf["share"], images)
 
         if missing_regions:
-            logger.error("Failed to publish images to all regions", extra={"missing_regions": missing_regions})
-            raise exceptions.IncompleteImageSetException("Incomplete image set published")
+            if self._allow_partial_region:
+                logger.warning(
+                    f"Incomplete publish: missing regions {missing_regions} "
+                    f"— continuing because allow-partial-region set"
+                )
+            else:
+                logger.error("Failed to publish images to all regions", extra={"missing_regions": missing_regions})
+                raise exceptions.IncompleteImageSetException("Incomplete image set published")
 
         return images
 
@@ -571,15 +607,19 @@ class Image:
             if partition == "aws":
                 logger.info(f"marketplace version request for {self.image_name}")
                 # image needs to be in us-east-1
-                ec2client: EC2Client = boto3.client("ec2", region_name="us-east-1")
-                image_info: Optional[_ImageInfo] = self._get(ec2client)
-                if image_info:
-                    im = ImageMarketplace(self._ctx, self.image_name)
-                    im.request_new_version(image_info.image_id)
-                else:
-                    logger.error(
-                        f"can not request marketplace version for {self.image_name} because no image found in us-east-1"
-                    )
+                try:
+                    ec2client: EC2Client = boto3.client("ec2", region_name="us-east-1")
+                    image_info: Optional[_ImageInfo] = self._get(ec2client)
+                    if image_info:
+                        im = ImageMarketplace(self._ctx, self.image_name)
+                        im.request_new_version(image_info.image_id)
+                    else:
+                        logger.error(
+                            f"can not request marketplace version for {self.image_name}"
+                            f"because no image found in us-east-1"
+                        )
+                except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as exc:
+                    _maybe_continue_on_region_error(self._allow_partial_region, "us-east-1", exc)
             else:
                 logger.info(
                     f"found marketplace config for {self.image_name} and partition 'aws' but "

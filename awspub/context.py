@@ -20,6 +20,7 @@ class Context:
     def __init__(self, conf_path: pathlib.Path, conf_template_mapping_path: pathlib.Path):
         self._conf_path = conf_path
         self._conf = None
+        self.allow_partial_region: bool = False
         self._conf_template_mapping_path = conf_template_mapping_path
         self._conf_template_mapping = {}
         yaml = YAML(typ="safe")

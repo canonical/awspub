@@ -2,9 +2,11 @@ import logging
 from typing import Dict, List, Optional
 
 import boto3
+import botocore.exceptions
 from mypy_boto3_ec2.client import EC2Client
 
 from awspub import exceptions
+from awspub.common import _maybe_continue_on_region_error
 from awspub.context import Context
 
 logger = logging.getLogger(__name__)
@@ -214,7 +216,13 @@ class Snapshot:
         # note: we don't wait for the snapshot to complete here!
         return resp["SnapshotId"]
 
-    def copy(self, snapshot_name: str, source_region: str, destination_regions: List[str]) -> Dict[str, str]:
+    def copy(
+        self,
+        snapshot_name: str,
+        source_region: str,
+        destination_regions: List[str],
+        allow_partial_region: bool = False,
+    ) -> Dict[str, str]:
         """
         Copy a snapshot to multiple regions
 
@@ -224,18 +232,31 @@ class Snapshot:
         :type source_region: str
         :param destination_regions: a list of regions to copy the snaphot to
         :type destionation_regions: List[str]
+        :param allow_partial_region: if True, log a warning and skip failed regions instead of raising
+        :type allow_partial_region: bool
         :return: a dict with region/snapshot-id mapping for the newly copied snapshots
         :rtype: Dict[str, str] where the key is a region name and the value a snapshot-id
         """
         snapshot_ids: Dict[str, str] = dict()
         for destination_region in destination_regions:
-            snapshot_ids[destination_region] = self._copy(snapshot_name, source_region, destination_region)
+            try:
+                snapshot_ids[destination_region] = self._copy(snapshot_name, source_region, destination_region)
+            except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as exc:
+                _maybe_continue_on_region_error(allow_partial_region, destination_region, exc)
 
         logger.info(f"Waiting for {len(snapshot_ids)} snapshots to appear in the destination regions ...")
+        failed_regions: List[str] = []
         for destination_region, snapshot_id in snapshot_ids.items():
-            ec2client_dest = boto3.client("ec2", region_name=destination_region)
-            waiter = ec2client_dest.get_waiter("snapshot_completed")
-            logger.info(f"Waiting for {snapshot_id} in {ec2client_dest.meta.region_name} to complete ...")
-            waiter.wait(SnapshotIds=[snapshot_id], WaiterConfig={"Delay": 30, "MaxAttempts": 90})
+            try:
+                ec2client_dest = boto3.client("ec2", region_name=destination_region)
+                waiter = ec2client_dest.get_waiter("snapshot_completed")
+                logger.info(f"Waiting for {snapshot_id} in {ec2client_dest.meta.region_name} to complete ...")
+                waiter.wait(SnapshotIds=[snapshot_id], WaiterConfig={"Delay": 30, "MaxAttempts": 90})
+            except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as exc:
+                _maybe_continue_on_region_error(allow_partial_region, destination_region, exc)
+                failed_regions.append(destination_region)
+
+        for region in failed_regions:
+            snapshot_ids.pop(region)
 
         return snapshot_ids

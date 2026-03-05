@@ -69,3 +69,14 @@ def _get_regions(region_to_query: str, regions_allowlist: List[str]) -> List[str
         regions = ec2_regions_all
 
     return regions
+
+
+def _maybe_continue_on_region_error(allow_partial_region: bool, region: str, exc: Exception) -> None:
+    """
+    If allow_partial_region is set, log a warning; otherwise re-raise the exception.
+    """
+    if not allow_partial_region:
+        raise exc
+    logger.warning(
+        f"API request failed in region {region}: {exc} — continuing because allow-partial-regions set",
+    )

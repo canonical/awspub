@@ -2,7 +2,11 @@ from unittest.mock import patch
 
 import pytest
 
-from awspub.common import _get_regions, _split_partition
+from awspub.common import (
+    _get_regions,
+    _maybe_continue_on_region_error,
+    _split_partition,
+)
 
 
 @pytest.mark.parametrize(
@@ -56,3 +60,19 @@ def test_common__get_regions(regions_in_partition, configured_regions, expected_
         instance.describe_regions.return_value = {"Regions": [{"RegionName": r} for r in regions_in_partition]}
 
         assert _get_regions("", configured_regions) == expected_output
+
+
+@pytest.mark.parametrize(
+    "allow_partial_region,should_raise",
+    [
+        (False, True),
+        (True, False),
+    ],
+)
+def test_common__maybe_continue_on_region_error(allow_partial_region, should_raise):
+    exc = Exception("some error")
+    if should_raise:
+        with pytest.raises(Exception, match="some error"):
+            _maybe_continue_on_region_error(allow_partial_region, "us-east-1", exc)
+    else:
+        _maybe_continue_on_region_error(allow_partial_region, "us-east-1", exc)

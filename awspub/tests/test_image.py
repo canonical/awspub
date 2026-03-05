@@ -527,3 +527,77 @@ def test_register_image__should_raise_on_unhandled_client_error():
     snapshot_ids = {"eu-central-1": "my-snapshot"}
     with pytest.raises(botocore.exceptions.ClientError):
         img._register_image(snapshot_ids["eu-central-1"], instance) is None
+
+
+@patch("awspub.s3.S3.bucket_region", return_value="region1")
+def test_list_allow_partial_region(s3_bucket_mock):
+    """
+    Test that list() skips a failing region and returns partial
+    results when allow_partial_region is set
+    """
+    with patch("boto3.client"):
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        ctx.allow_partial_region = True
+        img = image.Image(ctx, "test-image-6")
+        img._image_regions = ["region1", "region2"]
+        img._image_regions_cached = True
+        client_error = botocore.exceptions.ClientError({"Error": {"Code": "InternalError", "Message": "test"}}, "test")
+        with patch.object(img, "_get") as get_mock:
+            get_mock.side_effect = [client_error, image._ImageInfo("ami-123", "snap-123")]
+            result = img.list()
+        assert result == {"region2": image._ImageInfo("ami-123", "snap-123")}
+
+
+@patch("awspub.s3.S3.bucket_region", return_value="region1")
+def test_list_no_allow_partial_region(s3_bucket_mock):
+    """
+    Test that list() raises when allow_partial_region is not set and a ClientError occurs
+    """
+    with patch("boto3.client"):
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        img = image.Image(ctx, "test-image-6")
+        img._image_regions = ["region1", "region2"]
+        img._image_regions_cached = True
+        client_error = botocore.exceptions.ClientError({"Error": {"Code": "InternalError", "Message": "test"}}, "test")
+        with patch.object(img, "_get") as get_mock:
+            get_mock.side_effect = [client_error, image._ImageInfo("ami-123", "snap-123")]
+            with pytest.raises(botocore.exceptions.ClientError):
+                img.list()
+
+
+@patch("awspub.s3.S3.bucket_region", return_value="region1")
+def test_create_allow_partial_region(s3_bucket_mock):
+    """
+    Test that create() skips a failing region and doesn't raise when allow_partial_region is set
+    """
+    with patch("boto3.client"):
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        ctx.allow_partial_region = True
+        img = image.Image(ctx, "test-image-6")
+        img._image_regions = ["region1", "region2"]
+        img._image_regions_cached = True
+        client_error = botocore.exceptions.ClientError({"Error": {"Code": "InternalError", "Message": "test"}}, "test")
+        with patch.object(img, "_get") as get_mock, patch.object(img._snapshot, "copy") as copy_mock:
+            copy_mock.return_value = {"region1": "snapshot0", "region2": "snapshot1"}
+            get_mock.side_effect = [client_error, image._ImageInfo("ami-123", "snapshot1")]
+            result = img.create()
+        assert "region1" not in result
+        assert result.get("region2") == image._ImageInfo("ami-123", "snapshot1")
+
+
+@patch("awspub.s3.S3.bucket_region", return_value="region1")
+def test_create_no_allow_partial_region(s3_bucket_mock):
+    """
+    Test that create() raises when allow_partial_region is not set and a ClientError occurs
+    """
+    with patch("boto3.client"):
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        img = image.Image(ctx, "test-image-6")
+        img._image_regions = ["region1", "region2"]
+        img._image_regions_cached = True
+        client_error = botocore.exceptions.ClientError({"Error": {"Code": "InternalError", "Message": "test"}}, "test")
+        with patch.object(img, "_get") as get_mock, patch.object(img._snapshot, "copy") as copy_mock:
+            copy_mock.return_value = {"region1": "snapshot0", "region2": "snapshot1"}
+            get_mock.side_effect = [client_error, image._ImageInfo("ami-123", "snapshot1")]
+            with pytest.raises(botocore.exceptions.ClientError):
+                img.create()

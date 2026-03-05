@@ -16,7 +16,9 @@ def _create(args) -> None:
     Create images based on the given configuration and write json
     data to the given output
     """
-    images_by_name, images_by_group = awspub.create(args.config, args.config_mapping, args.group)
+    images_by_name, images_by_group = awspub.create(
+        args.config, args.config_mapping, args.allow_partial_regions, args.group
+    )
     images_json = json.dumps({"images": images_by_name, "images-by-group": images_by_group}, indent=4)
     args.output.write(images_json)
 
@@ -26,7 +28,9 @@ def _list(args) -> None:
     List images based on the given configuration and write json
     data to the given output
     """
-    images_by_name, images_by_group = awspub.list(args.config, args.config_mapping, args.group)
+    images_by_name, images_by_group = awspub.list(
+        args.config, args.config_mapping, args.allow_partial_regions, args.group
+    )
     images_json = json.dumps({"images": images_by_name, "images-by-group": images_by_group}, indent=4)
     args.output.write(images_json)
 
@@ -35,14 +39,14 @@ def _cleanup(args) -> None:
     """
     Cleanup available images
     """
-    awspub.cleanup(args.config, args.config_mapping, args.group)
+    awspub.cleanup(args.config, args.config_mapping, args.allow_partial_regions, args.group)
 
 
 def _publish(args) -> None:
     """
     Make available images public
     """
-    awspub.publish(args.config, args.config_mapping, args.group)
+    awspub.publish(args.config, args.config_mapping, args.allow_partial_regions, args.group)
 
 
 def _parser():
@@ -59,6 +63,12 @@ def _parser():
     )
     p_create.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
     p_create.add_argument("--group", type=str, help="only handles images from given group")
+    p_create.add_argument(
+        "--allow-partial-regions",
+        action="store_true",
+        help="continue processing remaining regions if "
+        "a region's API request fails (e.g. due to service unavailability)",
+    )
     p_create.add_argument("config", type=pathlib.Path, help="the image configuration file path")
     p_create.set_defaults(func=_create)
 
@@ -69,6 +79,12 @@ def _parser():
     )
     p_list.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
     p_list.add_argument("--group", type=str, help="only handles images from given group")
+    p_list.add_argument(
+        "--allow-partial-regions",
+        action="store_true",
+        help="continue processing remaining regions if "
+        "a region's API request fails (e.g. due to service unavailability)",
+    )
     p_list.add_argument("config", type=pathlib.Path, help="the image configuration file path")
     p_list.set_defaults(func=_list)
 
@@ -79,6 +95,12 @@ def _parser():
     )
     p_cleanup.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
     p_cleanup.add_argument("--group", type=str, help="only handles images from given group")
+    p_cleanup.add_argument(
+        "--allow-partial-regions",
+        action="store_true",
+        help="continue processing remaining regions if "
+        "a region's API request fails (e.g. due to service unavailability)",
+    )
     p_cleanup.add_argument("config", type=pathlib.Path, help="the image configuration file path")
 
     p_cleanup.set_defaults(func=_cleanup)
@@ -90,6 +112,12 @@ def _parser():
     )
     p_publish.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
     p_publish.add_argument("--group", type=str, help="only handles images from given group")
+    p_publish.add_argument(
+        "--allow-partial-regions",
+        action="store_true",
+        help="continue processing remaining regions if "
+        "a region's API request fails (e.g. due to service unavailability)",
+    )
     p_publish.add_argument("config", type=pathlib.Path, help="the image configuration file path")
 
     p_publish.set_defaults(func=_publish)

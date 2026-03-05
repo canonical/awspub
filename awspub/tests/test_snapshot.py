@@ -1,6 +1,7 @@
 import pathlib
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+import botocore.exceptions
 import pytest
 
 from awspub import context, snapshot
@@ -120,3 +121,86 @@ def test_snapshot__get_import_snapshot_task_active():
         s._get_import_snapshot_task(client_mock, "021abb3f2338b5e57b5d870816565429659bc70769d71c486234ad60fe6aec67")
         == "import-snap-08b79d7b5d382d56b"
     )
+
+
+def test_snapshot_copy_success():
+    """
+    copy() succeeds for all destination regions — returns region→snapshot_id mapping
+    """
+    ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+    s = snapshot.Snapshot(ctx)
+
+    waiter_mock = MagicMock()
+    ec2client_mock = MagicMock()
+    ec2client_mock.get_waiter.return_value = waiter_mock
+
+    with patch.object(s, "_copy", return_value="snap-abc") as copy_mock, patch(
+        "boto3.client", return_value=ec2client_mock
+    ):
+        result = s.copy("snap-name", "us-east-1", ["eu-west-1", "ap-southeast-1"])
+
+    assert result == {"eu-west-1": "snap-abc", "ap-southeast-1": "snap-abc"}
+    assert copy_mock.call_count == 2
+    waiter_mock.wait.assert_called()
+
+
+def test_snapshot_copy_region_error_raises():
+    """
+    copy() with allow_partial_region=False raises when _copy() fails for a region
+    """
+    ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+    s = snapshot.Snapshot(ctx)
+
+    exc = botocore.exceptions.ClientError(
+        {"Error": {"Code": "RequestLimitExceeded", "Message": "throttled"}}, "CopySnapshot"
+    )
+
+    with patch.object(s, "_copy", side_effect=exc), patch("boto3.client", return_value=MagicMock()):
+        with pytest.raises(botocore.exceptions.ClientError):
+            s.copy("snap-name", "us-east-1", ["eu-west-1"], allow_partial_region=False)
+
+
+def test_snapshot_copy_region_error_partial_allowed():
+    """
+    copy() with allow_partial_region=True skips failed regions and returns only successful ones
+    """
+    ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+    s = snapshot.Snapshot(ctx)
+
+    exc = botocore.exceptions.ClientError(
+        {"Error": {"Code": "RequestLimitExceeded", "Message": "throttled"}}, "CopySnapshot"
+    )
+
+    def copy_side_effect(snap_name, src, dst):
+        if dst == "me-central-1":
+            raise exc
+        return "snap-abc"
+
+    waiter_mock = MagicMock()
+    ec2client_mock = MagicMock()
+    ec2client_mock.get_waiter.return_value = waiter_mock
+
+    with patch.object(s, "_copy", side_effect=copy_side_effect), patch("boto3.client", return_value=ec2client_mock):
+        result = s.copy("snap-name", "us-east-1", ["eu-west-1", "me-central-1"], allow_partial_region=True)
+
+    assert result == {"eu-west-1": "snap-abc"}
+
+
+def test_snapshot_copy_waiter_error_partial_allowed():
+    """
+    copy() with allow_partial_region=True skips regions where the waiter fails
+    """
+    ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+    s = snapshot.Snapshot(ctx)
+
+    exc = botocore.exceptions.WaiterError("snapshot_completed", "failed", None)
+
+    waiter_mock = MagicMock()
+    waiter_mock.wait.side_effect = exc
+    ec2client_mock = MagicMock()
+    ec2client_mock.get_waiter.return_value = waiter_mock
+
+    with patch.object(s, "_copy", return_value="snap-abc"), patch("boto3.client", return_value=ec2client_mock):
+        result = s.copy("snap-name", "us-east-1", ["eu-west-1"], allow_partial_region=True)
+
+    assert result == {}

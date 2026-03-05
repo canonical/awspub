@@ -58,7 +58,7 @@ def _images_filtered(context: Context, group: Optional[str]) -> Iterator[Tuple[s
 
 
 def create(
-    config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[str]
+    config: pathlib.Path, config_mapping: pathlib.Path, allow_partial_regions: bool, group: Optional[str]
 ) -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, Dict[str, str]]]]:
     """
     Create images in the partition of the used account based on
@@ -75,18 +75,21 @@ def create(
     """
 
     ctx = Context(config, config_mapping)
+    ctx.allow_partial_region = allow_partial_regions
     s3 = S3(ctx)
     s3.upload_file(ctx.conf["source"]["path"])
     images: List[Tuple[str, Image, Dict[str, _ImageInfo]]] = []
     for image_name, image in _images_filtered(ctx, group):
+        print("jess", image_name, image)
         image_result: Dict[str, _ImageInfo] = image.create()
         images.append((image_name, image, image_result))
+        print(images)
     images_by_name, images_by_group = _images_grouped(images, group)
     return images_by_name, images_by_group
 
 
 def list(
-    config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[str]
+    config: pathlib.Path, config_mapping: pathlib.Path, allow_partial_regions: bool, group: Optional[str]
 ) -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, Dict[str, str]]]]:
     """
     List images in the partition of the used account based on
@@ -102,6 +105,7 @@ def list(
     :rtype: Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, Dict[str, str]]]
     """
     ctx = Context(config, config_mapping)
+    ctx.allow_partial_region = allow_partial_regions
     images: List[Tuple[str, Image, Dict[str, _ImageInfo]]] = []
     for image_name, image in _images_filtered(ctx, group):
         image_result: Dict[str, _ImageInfo] = image.list()
@@ -111,7 +115,7 @@ def list(
     return images_by_name, images_by_group
 
 
-def publish(config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[str]):
+def publish(config: pathlib.Path, config_mapping: pathlib.Path, allow_partial_regions: bool, group: Optional[str]):
     """
     Make available images in the partition of the used account based on
     the given configuration file public
@@ -124,11 +128,12 @@ def publish(config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[
     :type group: Optional[str]
     """
     ctx = Context(config, config_mapping)
+    ctx.allow_partial_region = allow_partial_regions
     for image_name, image in _images_filtered(ctx, group):
         image.publish()
 
 
-def cleanup(config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[str]):
+def cleanup(config: pathlib.Path, config_mapping: pathlib.Path, allow_partial_regions: bool, group: Optional[str]):
     """
     Cleanup available images in the partition of the used account based on
     the given configuration file
@@ -141,5 +146,6 @@ def cleanup(config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[
     :type group: Optional[str]
     """
     ctx = Context(config, config_mapping)
+    ctx.allow_partial_region = allow_partial_regions
     for image_name, image in _images_filtered(ctx, group):
         image.cleanup()
