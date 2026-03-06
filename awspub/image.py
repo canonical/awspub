@@ -279,7 +279,9 @@ class Image:
 
                 # image in region not found
                 if not image_info:
-                    logger.error(f"image {self.image_name} not available in region {region}. can not push SSM parameter")
+                    logger.error(
+                        f"image {self.image_name} not available in region {region}. can not push SSM parameter"
+                    )
                     continue
 
                 ssmclient_region: SSMClient = boto3.client("ssm", region_name=region)
@@ -400,7 +402,8 @@ class Image:
                         # this shouldn't happen because the image is marked as temporary in the config
                         # so how can it be public?
                         logger.error(
-                            f"no cleanup for {self.image_name} in {region} because ({image_info.image_id}) image is public"
+                            f"no cleanup for {self.image_name} in {region} because ({image_info.image_id}) "
+                            f"image is public"
                         )
                     else:
                         ec2client_region.deregister_image(ImageId=image_info.image_id)
@@ -461,7 +464,8 @@ class Image:
                         logger.warning(
                             f"image with name '{self.image_name}' already exists ({image_info.image_id}) "
                             f"in region {ec2client_region.meta.region_name} but the root device "
-                            f"snapshot id is unexpected (got {image_info.snapshot_id} but expected {snapshot_ids[region]})"
+                            f"snapshot id is unexpected (got {image_info.snapshot_id} but expected "
+                            f"{snapshot_ids[region]})"
                         )
                     else:
                         logger.info(
