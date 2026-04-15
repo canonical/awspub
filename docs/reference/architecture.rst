@@ -13,7 +13,7 @@ Architecture
   be changed on EC2 (also most parameters can't be changed anyway for an
   image on EC2).
 * snapshots are tracked by a sha256sum of the underlying source file (usually
-  a .vmdk file). Some configration parameters (`separate_snapshot` and
+  a .vmdk file). Some configuration parameters (`separate_snapshot` and
   `billing_products`) do adjust that sha256sum to make it unique for the
   combination of source .vmdk file and config options.
 * only EBS (no instance-store) and HVM (no PV) are supported.
