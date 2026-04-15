@@ -1,8 +1,10 @@
 AMI
 AMIs
+api
 ARN
 ConfigModel
 GPL
+pydantic
 SSM
 Snapcraft
 Snapstore
