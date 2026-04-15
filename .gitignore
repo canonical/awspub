@@ -8,21 +8,6 @@ dist
 docs-build/
 config.yaml
 .coverage
-
-# docs
-/*env*/
-.sphinx/venv/
-.sphinx/warnings.txt
-.sphinx/.wordlist.dic
-.sphinx/requirements.txt
-.sphinx/.doctrees/
-.sphinx/node_modules/
-package*.json
-_build
-.DS_Store
 __pycache__
 .idea/
-oci/_external/*.rst
 .vscode/
-.sphinx/styles/*
-.sphinx/vale.ini

@@ -14,11 +14,11 @@ In this documentation
 .. grid:: 1 1 1 1
    :padding: 0
 
-   .. grid-item:: :doc:`How-To Guides <docs/how_to/index>`
+   .. grid-item:: :doc:`How-To Guides <how_to/index>`
 
        **How-To** How-to guides to jump start your usage of 'awspub'
 
-   .. grid-item:: :doc:`Reference <docs/reference/index>`
+   .. grid-item:: :doc:`Reference <reference/index>`
 
        **Reference** Auto generated code documentation and reference material
 
@@ -27,5 +27,5 @@ In this documentation
    :maxdepth: 2
    :caption: Contents:
 
-   docs/how_to/index
-   docs/reference/index
+   how_to/index
+   reference/index
