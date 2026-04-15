@@ -1,0 +1,29 @@
+# Canonical theme
+canonical-sphinx~=0.6
+
+# Extensions
+sphinx-autobuild
+sphinx-design
+sphinx-notfound-page
+sphinx-tabs
+sphinxcontrib-jquery
+sphinxext-opengraph
+
+# Canonical extensions (previously bundled as canonical-sphinx-extensions)
+sphinx-contributor-listing>=0.1.0
+sphinx-related-links>=0.1.2
+sphinx-roles>=0.1.0
+sphinx-terminal>=1.0.2
+sphinx-youtube-links>=0.1.0
+
+# Other dependencies
+packaging
+sphinx-last-updated-by-git
+
+# Vale dependencies
+rst2html
+vale
+
+# awspub-specific: needed for autodoc / autodoc_pydantic
+autodoc-pydantic
+pydantic-settings
