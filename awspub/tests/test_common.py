@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from awspub.common import _get_regions, _split_partition
+from awspub.common import _get_client, _get_regions, _split_partition
 
 
 @pytest.mark.parametrize(
@@ -56,3 +56,20 @@ def test_common__get_regions(regions_in_partition, configured_regions, expected_
         instance.describe_regions.return_value = {"Regions": [{"RegionName": r} for r in regions_in_partition]}
 
         assert _get_regions("", configured_regions) == expected_output
+
+
+@pytest.mark.parametrize(
+    "service,args,expected_region",
+    [
+        ("ec2", {"region_name": "us-west-1"}, "us-west-1"),
+        ("s3", {"region_name": "eu-central-1"}, "eu-central-1"),
+    ],
+)
+def test_get_client_with_args(service, args, expected_region):
+
+    with patch("boto3.client") as client_mock:
+        _get_client(service, **args)
+
+        client_mock.assert_called_once_with(service, **args)
+        _, called_kwargs = client_mock.call_args
+        assert called_kwargs["region_name"] == expected_region

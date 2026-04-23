@@ -53,11 +53,11 @@ def test_s3__get_multipart_upload_id(list_multipart_uploads_resp, create_multipa
 
 
 @patch("awspub.s3.S3._bucket_exists", return_value=True)
-@patch("awspub.s3.boto3")
-def test_s3_bucket_region_bucket_exists(boto3_mock, bucket_exists_mock):
+@patch("awspub.s3._get_client")
+def test_s3_bucket_region_bucket_exists(get_client_mock, bucket_exists_mock):
     region_name = "sample-region-1"
     head_bucket = {"BucketRegion": region_name}
-    boto3_mock.client.return_value.head_bucket.return_value = head_bucket
+    get_client_mock.return_value.head_bucket.return_value = head_bucket
     ctx = context.Context(curdir / "fixtures/config1.yaml", None)
     sthree = s3.S3(ctx)
 
@@ -65,7 +65,7 @@ def test_s3_bucket_region_bucket_exists(boto3_mock, bucket_exists_mock):
 
 
 @patch("awspub.s3.S3._bucket_exists", return_value=False)
-@patch("boto3.client")
+@patch("awspub.s3._get_client")
 def test_s3_bucket_region_bucket_not_exists(bclient_mock, bucket_exists_mock):
     ctx = context.Context(curdir / "fixtures/config1.yaml", None)
     sthree = s3.S3(ctx)

@@ -2,9 +2,9 @@ import logging
 import re
 from typing import Any, Dict
 
-import boto3
 from mypy_boto3_marketplace_catalog import MarketplaceCatalogClient
 
+from awspub.common import _get_client
 from awspub.context import Context
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ class ImageMarketplace:
         self._ctx: Context = context
         self._image_name: str = image_name
         # marketplace-catalog API is only available via us-east-1
-        self._mpclient: MarketplaceCatalogClient = boto3.client("marketplace-catalog", region_name="us-east-1")
+        self._mpclient: MarketplaceCatalogClient = _get_client("marketplace-catalog", region_name="us-east-1")
 
     @property
     def conf(self) -> Dict[str, Any]:

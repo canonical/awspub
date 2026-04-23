@@ -4,11 +4,12 @@ import logging
 import os
 from typing import Dict
 
-import boto3
 from mypy_boto3_s3.type_defs import CompletedPartTypeDef
 
 from awspub.context import Context
 from awspub.exceptions import BucketDoesNotExistException
+
+from .common import _get_client
 
 # chunk size is required for calculating the checksums
 MULTIPART_CHUNK_SIZE = 8 * 1024 * 1024
@@ -28,7 +29,7 @@ class S3:
         "type context: awspub.context.Context
         """
         self._ctx: Context = context
-        self._s3client = boto3.client("s3")
+        self._s3client = _get_client("s3")
         self._bucket_region = None
 
     @property

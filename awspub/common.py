@@ -50,7 +50,7 @@ def _get_regions(region_to_query: str, regions_allowlist: List[str]) -> List[str
     """
 
     # get all available regions
-    ec2client: EC2Client = boto3.client("ec2", region_name=region_to_query)
+    ec2client: EC2Client = _get_client("ec2", region_name=region_to_query)
     resp = ec2client.describe_regions()
     ec2_regions_all = [r["RegionName"] for r in resp["Regions"]]
 
@@ -69,3 +69,7 @@ def _get_regions(region_to_query: str, regions_allowlist: List[str]) -> List[str
         regions = ec2_regions_all
 
     return regions
+
+
+def _get_client(service, **kwargs):
+    return boto3.client(service, **kwargs)
