@@ -1,0 +1,22 @@
+---
+awspub:
+  source:
+    path: "image.vmdk"
+    architecture: "x86_64"
+
+  s3:
+    bucket_name: "awspub-toabctl"
+
+  images:
+    "my-custom-image":
+      boot_mode: "uefi-preferred"
+      regions_denylist:
+        - us-east-1
+      sns:
+        - "my-topic1":
+            subject: "my-topic1-subject"
+            message:
+              default: "This is default message"
+              email: "This is message for email protocols."
+            regions_denylist:
+              - eu-central-1

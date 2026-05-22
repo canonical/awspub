@@ -50,7 +50,10 @@ class SNSNotification(object):
         """
 
         regions_configured = topic_config["regions"] if "regions" in topic_config else []
-        sns_regions = _get_regions(self._s3.bucket_region, regions_configured)
+        if regions_configured is None:
+            regions_configured = []
+        regions_denylist = topic_config["regions_denylist"] if "regions_denylist" in topic_config else None
+        sns_regions = _get_regions(self._s3.bucket_region, regions_configured, regions_denylist)
 
         return sns_regions
 

@@ -241,6 +241,26 @@ Create the image and use the `publish` command to publish the image and also pus
   awspub create config.yaml --config-mapping config.yaml.mapping
   awspub publish config.yaml --config-mapping config.yaml.mapping
 
+Region filtering
+~~~~~~~~~~~~~~~~
+
+By default, images are published to all available regions in the current partition.
+Restricting regions can be done with the ``regions_denylist`` configuration option
+at both the image and SNS notification levels.
+
+.. literalinclude:: ../config-samples/config-regions-denylist.yaml
+   :language: yaml
+
+In the example above, the image ``my-custom-image`` will be published to all regions
+**except** ``us-east-1``. For SNS notifications, ``eu-central-1`` will be excluded
+from delivery. ``regions_denylist`` removes those regions from whichever set would
+otherwise be used (the explicit ``regions`` list, or all available regions if
+``regions`` is not specified).
+
+.. note::
+   A region listed in both ``regions`` and ``regions_denylist`` will cause a
+   validation error. Regions must not appear in both lists.
+
 SNS Notification
 ~~~~~~~~~~~~~~~~
 
@@ -261,7 +281,9 @@ Currently, the supported protocols are ``default`` and ``email`` only, and the `
 send notifications.
 The ``default`` message will be used as a fallback message for any protocols.
 
-Also, Regions can also be specified in ``sns`` configuration to indicate where the notification should be sent. If no regions are specified, SNS will default to using all regions in the partition.
+Regions can also be specified in ``sns`` configuration to indicate where the notification should be sent.
+If no regions are specified, SNS will default to using all regions in the partition.
+Additionally, ``regions_denylist`` can be used to exclude specific regions from SNS notification delivery.
 
 Create the image and use the `publish` command to publish the image and also notify the published images to users:
 

@@ -1,0 +1,22 @@
+awspub:
+  s3:
+    bucket_name: "bucket1"
+
+  source:
+    path: "config1.vmdk"
+    architecture: "x86_64"
+
+  images:
+    "test-image-1":
+      description: |
+        A test image with overlapping include and exclude regions
+      boot_mode: "uefi"
+      regions:
+        - "eu-central-1"
+        - "us-east-1"
+      regions_denylist:
+        - "us-east-1"
+      temporary: true
+
+  tags:
+    name: "foobar"

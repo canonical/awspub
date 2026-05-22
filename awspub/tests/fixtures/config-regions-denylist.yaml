@@ -1,0 +1,45 @@
+awspub:
+  s3:
+    bucket_name: "bucket1"
+
+  source:
+    path: "config1.vmdk"
+    architecture: "x86_64"
+
+  images:
+    "test-image-1":
+      description: |
+        A test image with regions_denylist
+      boot_mode: "uefi"
+      regions:
+        - "eu-central-1"
+        - "ap-southeast-1"
+      regions_denylist:
+        - "us-east-1"
+      temporary: true
+
+    "test-image-2":
+      description: |
+        A test image excluding regions from all available
+      boot_mode: "uefi"
+      regions_denylist:
+        - "us-east-1"
+      temporary: true
+
+    "test-image-3":
+      description: |
+        A test image with regions_denylist for sns
+      boot_mode: "uefi"
+      regions:
+        - "eu-central-1"
+        - "us-east-1"
+      sns:
+        - "topic1":
+            subject: "topic1-subject"
+            message:
+              default: "default-message"
+            regions_denylist:
+              - "us-east-1"
+
+  tags:
+    name: "foobar"

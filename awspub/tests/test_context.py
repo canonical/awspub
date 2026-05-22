@@ -86,3 +86,30 @@ def test_invalid_configuration_extra_field():
     """
     with pytest.raises(ValidationError):
         context.Context(curdir / "fixtures/config-invalid-s3-extra.yaml", None)
+
+
+def test_context_with_regions_denylist():
+    """
+    Create a Context object with regions_denylist configured
+    """
+    ctx = context.Context(curdir / "fixtures/config-regions-denylist.yaml", None)
+    assert ctx.conf["images"]["test-image-1"]["regions_denylist"] == ["us-east-1"]
+    assert ctx.conf["images"]["test-image-1"]["regions"] == ["eu-central-1", "ap-southeast-1"]
+
+
+def test_context_with_overlapping_regions_denylist():
+    """
+    Create a Context object with overlapping include and exclude regions - should fail validation
+    """
+    with pytest.raises(ValidationError) as exc_info:
+        context.Context(curdir / "fixtures/config-invalid-regions-denylist.yaml", None)
+    assert "appear in both 'regions' and 'regions_denylist'" in str(exc_info.value)
+
+
+def test_context_with_overlapping_regions_denylist_sns():
+    """
+    Create a Context object with overlapping include and exclude regions for SNS - should fail validation
+    """
+    with pytest.raises(ValidationError) as exc_info:
+        context.Context(curdir / "fixtures/config-invalid-regions-denylist-sns.yaml", None)
+    assert "appear in both 'regions' and 'regions_denylist'" in str(exc_info.value)
