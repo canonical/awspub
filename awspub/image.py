@@ -126,7 +126,9 @@ class Image:
         """
         if not self._image_regions_cached:
             regions_configured = self.conf["regions"] if "regions" in self.conf else []
-            self._image_regions = _get_regions(self._s3.bucket_region, regions_configured)
+            regions_configured = self.conf.get("regions") or []
+            regions_denylist = self.conf["regions_denylist"] if "regions_denylist" in self.conf else None
+            self._image_regions = _get_regions(self._s3.bucket_region, regions_configured, regions_denylist)
             self._image_regions_cached = True
         return self._image_regions
 

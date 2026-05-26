@@ -43,16 +43,26 @@ def test_common__split_partition(input, expected_output):
 
 
 @pytest.mark.parametrize(
-    "regions_in_partition,configured_regions,expected_output",
+    "regions_in_partition,configured_regions,regions_denylist,expected_output",
     [
-        (["region-1", "region-2"], ["region-1", "region-3"], ["region-1"]),
-        (["region-1", "region-2", "region-3"], ["region-4", "region-5"], []),
-        (["region-1", "region-2"], [], ["region-1", "region-2"]),
+        (["region-1", "region-2"], ["region-1", "region-3"], None, ["region-1"]),
+        (["region-1", "region-2", "region-3"], ["region-4", "region-5"], None, []),
+        (["region-1", "region-2"], [], None, ["region-1", "region-2"]),
+        # exclude regions from allowlist
+        (["region-1", "region-2"], ["region-1", "region-2"], ["region-1"], ["region-2"]),
+        # exclude from all available regions (no allowlist)
+        (["region-1", "region-2", "region-3"], [], ["region-1", "region-3"], ["region-2"]),
+        # exclude region not in allowlist - no effect
+        (["region-1", "region-2"], ["region-1"], ["region-3"], ["region-1"]),
+        # exclude all regions
+        (["region-1", "region-2"], ["region-1"], ["region-1"], []),
+        # exclude from all available
+        (["region-1"], [], ["region-1"], []),
     ],
 )
-def test_common__get_regions(regions_in_partition, configured_regions, expected_output):
+def test_common__get_regions(regions_in_partition, configured_regions, regions_denylist, expected_output):
     with patch("boto3.client") as bclient_mock:
         instance = bclient_mock.return_value
         instance.describe_regions.return_value = {"Regions": [{"RegionName": r} for r in regions_in_partition]}
 
-        assert _get_regions("", configured_regions) == expected_output
+        assert _get_regions("", configured_regions, regions_denylist) == expected_output

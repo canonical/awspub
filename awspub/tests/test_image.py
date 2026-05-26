@@ -71,6 +71,49 @@ def test_image_regions(s3_region_mock, imagename, regions_in_partition, regions_
         assert sorted(img.image_regions) == sorted(regions_expected)
 
 
+@patch("awspub.s3.S3.bucket_region", return_value="eu-central-1")
+def test_image_regions_with_denylist(s3_region_mock):
+    """
+    Test the regions for a given image with regions_denylist
+    """
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+        instance.describe_regions.return_value = {
+            "Regions": [
+                {"RegionName": "eu-central-1"},
+                {"RegionName": "us-east-1"},
+                {"RegionName": "ap-southeast-1"},
+            ]
+        }
+        ctx = context.Context(curdir / "fixtures/config-regions-denylist.yaml", None)
+        ctx.conf["images"]["test-image-1"]["regions"] = [
+            "eu-central-1",
+            "us-east-1",
+            "ap-southeast-1",
+        ]
+        img = image.Image(ctx, "test-image-1")
+        assert sorted(img.image_regions) == sorted(["eu-central-1", "ap-southeast-1"])
+
+
+@patch("awspub.s3.S3.bucket_region", return_value="eu-central-1")
+def test_image_regions_denylist_from_all(s3_region_mock):
+    """
+    Test regions_denylist with no explicit regions list (excludes from all available)
+    """
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+        instance.describe_regions.return_value = {
+            "Regions": [
+                {"RegionName": "eu-central-1"},
+                {"RegionName": "us-east-1"},
+                {"RegionName": "ap-southeast-1"},
+            ]
+        }
+        ctx = context.Context(curdir / "fixtures/config-regions-denylist.yaml", None)
+        img = image.Image(ctx, "test-image-2")
+        assert sorted(img.image_regions) == sorted(["eu-central-1", "ap-southeast-1"])
+
+
 @pytest.mark.parametrize(
     "imagename,cleanup",
     [

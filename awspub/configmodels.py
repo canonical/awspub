@@ -3,7 +3,7 @@ import re
 from enum import Enum
 from typing import Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from awspub.common import _split_partition
 
@@ -119,15 +119,31 @@ class ConfigImageSNSNotificationModel(BaseModel):
         "used partition, it will be ignored.",
         default=None,
     )
+    regions_denylist: Optional[List[str]] = Field(
+        description="Optional list of regions to exclude from sending notifications. "
+        "A region listed in both 'regions' and 'regions_denylist' will raise a validation error.",
+        default=None,
+    )
 
     @field_validator("message")
     def check_message(cls, value):
         # Check message protocols have default key
-        # Message should contain at least a top-level JSON key of “default”
+        # Message should contain at least a top-level JSON key of "default"
         # with a value that is a string
         if SNSNotificationProtocol.DEFAULT not in value:
             raise ValueError(f"{SNSNotificationProtocol.DEFAULT.value} key is required to send SNS notification")
         return value
+
+    @model_validator(mode="after")
+    def check_regions_denylist(self):
+        if self.regions and self.regions_denylist:
+            overlap = set(self.regions) & set(self.regions_denylist)
+            if overlap:
+                raise ValueError(
+                    f"Regions {sorted(overlap)} appear in both 'regions' and 'regions_denylist'. "
+                    "A region cannot be both included and excluded."
+                )
+        return self
 
 
 class ConfigImageModel(BaseModel):
@@ -142,6 +158,11 @@ class ConfigImageModel(BaseModel):
         description="Optional list of regions for this image. If not given, all available regions will"
         "be used from the currently used partition. If a region doesn't exist in the currently used partition,"
         " it will be ignored.",
+        default=None,
+    )
+    regions_denylist: Optional[List[str]] = Field(
+        description="Optional list of regions to exclude from publication for this image. "
+        "A region listed in both 'regions' and 'regions_denylist' will raise a validation error.",
         default=None,
     )
     separate_snapshot: bool = Field(description="Use a separate snapshot for this image?", default=False)
@@ -216,6 +237,17 @@ class ConfigImageModel(BaseModel):
                 if partition not in ["aws", "aws-cn", "aws-us-gov"]:
                     raise ValueError("Partition must be one of 'aws', 'aws-cn', 'aws-us-gov'")
         return v
+
+    @model_validator(mode="after")
+    def check_regions_denylist(self):
+        if self.regions and self.regions_denylist:
+            overlap = set(self.regions) & set(self.regions_denylist)
+            if overlap:
+                raise ValueError(
+                    f"Regions {sorted(overlap)} appear in both 'regions' and 'regions_denylist'. "
+                    "A region cannot be both included and excluded."
+                )
+        return self
 
 
 class ConfigModel(BaseModel):

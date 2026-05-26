@@ -1,5 +1,5 @@
 import logging
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import boto3
 from mypy_boto3_ec2.client import EC2Client
@@ -31,20 +31,25 @@ def _split_partition(val: str) -> Tuple[str, str]:
     return "aws", val
 
 
-def _get_regions(region_to_query: str, regions_allowlist: List[str]) -> List[str]:
+def _get_regions(
+    region_to_query: str, regions_allowlist: List[str], regions_denylist: Optional[List[str]] = None
+) -> List[str]:
     """
     Get a list of region names querying the `region_to_query` for all regions and
-    then filtering by `regions_allowlist`.
+    then filtering by `regions_allowlist` and `regions_denylist`.
     If no `regions_allowlist` is given, all queried regions are returned for the
     current partition.
     If `regions_allowlist` is given, all regions from that list are returned if
     the listed region exist in the current partition.
+    If `regions_denylist` is given, those regions are filtered out from the result.
     Eg. `us-east-1` listed in `regions_allowlist` won't be returned if the current
     partition is `aws-cn`.
     :param region_to_query: region name of current partition
     :type region_to_query: str
-    :praram regions_allowlist: list of regions in config file
+    :param regions_allowlist: list of regions in config file
     :type regions_allowlist: List[str]
+    :param regions_denylist: optional list of regions to exclude
+    :type regions_denylist: Optional[List[str]]
     :return: list of regions names
     :rtype: List[str]
     """
@@ -67,5 +72,12 @@ def _get_regions(region_to_query: str, regions_allowlist: List[str]) -> List[str
             )
     else:
         regions = ec2_regions_all
+
+    if regions_denylist:
+        exclude_set = set(regions_denylist)
+        regions = [r for r in regions if r not in exclude_set]
+        excluded_in_partition = exclude_set & set(ec2_regions_all)
+        if excluded_in_partition:
+            logger.info(f"regions {sorted(excluded_in_partition)} excluded from region selection")
 
     return regions
