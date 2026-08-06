@@ -18,6 +18,19 @@ class ConfigS3Model(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     bucket_name: str = Field(description="The S3 bucket name")
+    upload_multipart_concurrency: int = Field(
+        default=1,
+        ge=1,
+        le=32,
+        description="The number of parts to upload concurrently during a multipart upload to S3 (1-32)",
+    )
+
+    @field_validator("upload_multipart_concurrency", mode="before")
+    @classmethod
+    def _upload_multipart_concurrency_not_bool(cls, v):
+        if isinstance(v, bool):
+            raise ValueError("upload_multipart_concurrency must be an int, not a bool")
+        return v
 
 
 class ConfigSourceModel(BaseModel):

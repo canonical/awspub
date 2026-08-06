@@ -1,10 +1,12 @@
 import base64
+import concurrent.futures
 import hashlib
 import logging
 import os
 from typing import Dict
 
 import boto3
+from botocore.config import Config
 from mypy_boto3_s3.type_defs import CompletedPartTypeDef
 
 from awspub.context import Context
@@ -28,7 +30,9 @@ class S3:
         "type context: awspub.context.Context
         """
         self._ctx: Context = context
-        self._s3client = boto3.client("s3")
+        self._s3client = boto3.client(
+            "s3", config=Config(max_pool_connections=self._ctx.conf["s3"]["upload_multipart_concurrency"])
+        )
         self._bucket_region = None
 
     @property
@@ -168,9 +172,42 @@ class S3:
             logger.warning("using the first found multipart upload but you should delete pending multipart uploads")
             return multipart_uploads[0]
 
+    def _upload_part(self, chunk: bytes, part_number: int, upload_id: str, sha256_part: str) -> CompletedPartTypeDef:
+        """
+        Upload a single part of a multipart upload
+
+        :param chunk: the raw bytes of the part to upload
+        :type chunk: bytes
+        :param part_number: the part number (starts at 1)
+        :type part_number: int
+        :param upload_id: the multipart upload id
+        :type upload_id: str
+        :param sha256_part: the sha256sum of the given chunk
+        :type sha256_part: str
+        :return: a dict describing the completed part
+        :rtype: CompletedPartTypeDef
+        """
+        resp_upload_part = self._s3client.upload_part(
+            Body=chunk,
+            Bucket=self.bucket_name,
+            ContentLength=len(chunk),
+            ChecksumAlgorithm="SHA256",
+            ChecksumSHA256=sha256_part,
+            Key=self._ctx.source_sha256,
+            PartNumber=part_number,
+            UploadId=upload_id,
+        )
+        return dict(
+            PartNumber=part_number,
+            ETag=resp_upload_part["ETag"],
+            ChecksumSHA256=sha256_part,
+        )
+
     def _upload_file_multipart(self, source_path: str, s3_sha256sum: str) -> None:
         """
-        Upload a given file to the bucket from context. The key name will be the sha256sum hexdigest of the file
+        Upload a given file to the bucket from context. The key name will be the sha256sum hexdigest of the file.
+        Parts are uploaded concurrently - the number of concurrent uploads can be configured via
+        the "s3.upload_multipart_concurrency" config option.
 
         :param source_path: the path to the local file to upload (usually a .vmdk file)
         :type source_path: str
@@ -194,7 +231,27 @@ class S3:
         parts: Dict[int, CompletedPartTypeDef] = {}
         parts_size_done: int = 0
         source_path_size: int = os.path.getsize(source_path)
-        with open(source_path, "rb") as f:
+
+        concurrency: int = self._ctx.conf["s3"]["upload_multipart_concurrency"]
+        # cap the number of in-flight futures so we don't read the whole (potentially huge) source
+        # file into memory at once
+        max_pending_futures = concurrency * 2
+
+        with open(source_path, "rb") as f, concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
+            # future -> (part_number, chunk_size)
+            pending_futures: Dict[concurrent.futures.Future, tuple] = {}
+
+            def _drain(done_futures: set) -> None:
+                nonlocal parts_size_done
+                for done_future in done_futures:
+                    done_part_number, done_chunk_size = pending_futures.pop(done_future)
+                    parts[done_part_number] = done_future.result()
+                    parts_size_done += done_chunk_size
+                    logger.info(
+                        f"part {done_part_number} uploaded ({round(parts_size_done/source_path_size * 100, 2)}% "
+                        f"; {parts_size_done} / {source_path_size} bytes)"
+                    )
+
             # parts start at 1 (not 0)
             for part_number, chunk in enumerate(iter(lambda: f.read(MULTIPART_CHUNK_SIZE), b""), start=1):
                 # the sha256sum of the current part
@@ -213,28 +270,21 @@ class S3:
                     else:
                         logger.info(f"part {part_number} already exists but will be overwritten")
 
-                # upload a new part
-                resp_upload_part = self._s3client.upload_part(
-                    Body=chunk,
-                    Bucket=self.bucket_name,
-                    ContentLength=len(chunk),
-                    ChecksumAlgorithm="SHA256",
-                    ChecksumSHA256=sha256_part,
-                    Key=self._ctx.source_sha256,
-                    PartNumber=part_number,
-                    UploadId=upload_id,
-                )
-                parts_size_done += len(chunk)
-                # add new part to the dict of parts
-                parts[part_number] = dict(
-                    PartNumber=part_number,
-                    ETag=resp_upload_part["ETag"],
-                    ChecksumSHA256=sha256_part,
-                )
-                logger.info(
-                    f"part {part_number} uploaded ({round(parts_size_done/source_path_size * 100, 2)}% "
-                    f"; {parts_size_done} / {source_path_size} bytes)"
-                )
+                # submit a new part upload to the thread pool
+                future = executor.submit(self._upload_part, chunk, part_number, upload_id, sha256_part)
+                pending_futures[future] = (part_number, len(chunk))
+
+                # bound memory usage/in-flight uploads: wait for some to finish before reading more
+                if len(pending_futures) >= max_pending_futures:
+                    done, _ = concurrent.futures.wait(
+                        pending_futures.keys(), return_when=concurrent.futures.FIRST_COMPLETED
+                    )
+                    _drain(done)
+
+            # wait for all remaining uploads to finish
+            if pending_futures:
+                done, _ = concurrent.futures.wait(pending_futures.keys())
+                _drain(done)
 
         logger.info(
             f"finishing the multipart upload for key '{self._ctx.source_sha256}' in bucket {self.bucket_name} now ..."
@@ -245,7 +295,9 @@ class S3:
             Key=self._ctx.source_sha256,
             UploadId=upload_id,
             ChecksumSHA256=s3_sha256sum,
-            MultipartUpload={"Parts": [value for key, value in parts.items()]},
+            # S3 requires parts to be listed in ascending PartNumber order - concurrent uploads
+            # can complete in any order, so sort explicitly rather than relying on dict insertion order
+            MultipartUpload={"Parts": [parts[part_number] for part_number in sorted(parts)]},
         )
         logger.info(
             f"multipart upload finished and key '{self._ctx.source_sha256}' now "
