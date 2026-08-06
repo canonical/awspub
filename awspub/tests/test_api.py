@@ -1,6 +1,8 @@
 import pathlib
+from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
 from awspub import api, context, image
 
@@ -87,3 +89,40 @@ def test_api__images_grouped(group, expected):
     ]
     grouped = api._images_grouped(images, group)
     assert grouped == expected
+
+
+@patch("awspub.api.Image")
+@patch("awspub.api.S3")
+def test_api_create_upload_multipart_concurrency_override(s3_mock, image_mock):
+    """
+    test that create() overrides s3.upload_multipart_concurrency in the context
+    when explicitly given
+    """
+    api.create(curdir / "fixtures/config1.yaml", None, None, upload_multipart_concurrency=6)
+    ctx_used = s3_mock.call_args.args[0]
+    assert ctx_used.conf["s3"]["upload_multipart_concurrency"] == 6
+
+
+@patch("awspub.api.Image")
+@patch("awspub.api.S3")
+def test_api_create_upload_multipart_concurrency_not_overridden(s3_mock, image_mock):
+    """
+    test that create() leaves the config default in place when no override is given
+    """
+    api.create(curdir / "fixtures/config1.yaml", None, None)
+    ctx_used = s3_mock.call_args.args[0]
+    assert ctx_used.conf["s3"]["upload_multipart_concurrency"] == 1
+
+
+@pytest.mark.parametrize("upload_multipart_concurrency", [0, -1, 33, True, False])
+def test_api_create_upload_multipart_concurrency_override_invalid(upload_multipart_concurrency):
+    """
+    test that create() rejects invalid multipart-upload concurrency overrides
+    """
+    with pytest.raises(ValidationError):
+        api.create(
+            curdir / "fixtures/config1.yaml",
+            None,
+            None,
+            upload_multipart_concurrency=upload_multipart_concurrency,
+        )

@@ -16,7 +16,12 @@ def _create(args) -> None:
     Create images based on the given configuration and write json
     data to the given output
     """
-    images_by_name, images_by_group = awspub.create(args.config, args.config_mapping, args.group)
+    images_by_name, images_by_group = awspub.create(
+        args.config,
+        args.config_mapping,
+        args.group,
+        upload_multipart_concurrency=args.upload_multipart_concurrency,
+    )
     images_json = json.dumps({"images": images_by_name, "images-by-group": images_by_group}, indent=4)
     args.output.write(images_json)
 
@@ -59,6 +64,13 @@ def _parser():
     )
     p_create.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
     p_create.add_argument("--group", type=str, help="only handles images from given group")
+    p_create.add_argument(
+        "--upload-multipart-concurrency",
+        type=int,
+        default=None,
+        help="number of S3 multipart upload parts to upload concurrently (1-32). "
+        "overrides s3.upload_multipart_concurrency from the config file if set",
+    )
     p_create.add_argument("config", type=pathlib.Path, help="the image configuration file path")
     p_create.set_defaults(func=_create)
 

@@ -2,6 +2,7 @@ import logging
 import pathlib
 from typing import Dict, Iterator, List, Optional, Tuple
 
+from awspub.configmodels import ConfigS3Model
 from awspub.context import Context
 from awspub.image import Image, _ImageInfo
 from awspub.s3 import S3
@@ -58,7 +59,10 @@ def _images_filtered(context: Context, group: Optional[str]) -> Iterator[Tuple[s
 
 
 def create(
-    config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[str]
+    config: pathlib.Path,
+    config_mapping: pathlib.Path,
+    group: Optional[str],
+    upload_multipart_concurrency: Optional[int] = None,
 ) -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, Dict[str, str]]]]:
     """
     Create images in the partition of the used account based on
@@ -70,11 +74,18 @@ def create(
     :type config_mapping: pathlib.Path
     :param group: only handles images from given group
     :type group: Optional[str]
+    :param upload_multipart_concurrency: override the s3.upload_multipart_concurrency config
+        option (number of S3 multipart upload parts to upload concurrently). if not given,
+        the value from the config file (or its default) is used
+    :type upload_multipart_concurrency: Optional[int]
     :return: the images grouped by name and by group
     :rtype: Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, Dict[str, str]]]
     """
 
     ctx = Context(config, config_mapping)
+    if upload_multipart_concurrency is not None:
+        s3_config = ConfigS3Model(**{**ctx.conf["s3"], "upload_multipart_concurrency": upload_multipart_concurrency})
+        ctx.conf["s3"]["upload_multipart_concurrency"] = s3_config.upload_multipart_concurrency
     s3 = S3(ctx)
     s3.upload_file(ctx.conf["source"]["path"])
     images: List[Tuple[str, Image, Dict[str, _ImageInfo]]] = []
