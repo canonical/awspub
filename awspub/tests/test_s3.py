@@ -1,9 +1,11 @@
 import pathlib
+import time
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
-from awspub import context, s3
+from awspub import configmodels, context, s3
 from awspub.exceptions import BucketDoesNotExistException
 
 curdir = pathlib.Path(__file__).parent.resolve()
@@ -72,3 +74,82 @@ def test_s3_bucket_region_bucket_not_exists(bclient_mock, bucket_exists_mock):
 
     with pytest.raises(BucketDoesNotExistException):
         sthree.bucket_region()
+
+
+@pytest.mark.parametrize("concurrency", [1, 2, 4, 8])
+@patch("boto3.client")
+def test_s3__upload_file_multipart_concurrency(bclient_mock, concurrency, monkeypatch):
+    """
+    test that _upload_file_multipart() uploads all parts and assembles them in ascending
+    PartNumber order for the CompleteMultipartUpload call, even when parts finish
+    out of order (as can happen with concurrent uploads).
+    """
+    # config1.vmdk is 65536 bytes, use a small chunk size so we get multiple parts
+    monkeypatch.setattr(s3, "MULTIPART_CHUNK_SIZE", 8192)
+
+    ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+    ctx.conf["s3"]["upload_multipart_concurrency"] = concurrency
+    sthree = s3.S3(ctx)
+
+    instance = bclient_mock.return_value
+    instance.list_parts.return_value = {"ChecksumAlgorithm": "SHA256", "Parts": []}
+
+    def _fake_upload_part(**kwargs):
+        # force out-of-order completion: earlier part numbers take longer, so later
+        # part numbers are more likely to complete first when uploaded concurrently
+        part_number = kwargs["PartNumber"]
+        time.sleep(0.01 * (9 - part_number))
+        return {"ETag": f"etag-{part_number}"}
+
+    instance.upload_part.side_effect = _fake_upload_part
+
+    sthree._upload_file_multipart(str(curdir / "fixtures/config1.vmdk"), "fakesha256sum-8")
+
+    expected_part_count = 8
+    assert instance.upload_part.call_count == expected_part_count
+
+    complete_kwargs = instance.complete_multipart_upload.call_args.kwargs
+    completed_parts = complete_kwargs["MultipartUpload"]["Parts"]
+    assert len(completed_parts) == expected_part_count
+    # parts must be sent to S3 in ascending PartNumber order, regardless of completion order
+    part_numbers = [p["PartNumber"] for p in completed_parts]
+    assert part_numbers == list(range(1, expected_part_count + 1))
+    for part in completed_parts:
+        assert part["ETag"] == f"etag-{part['PartNumber']}"
+
+
+@pytest.mark.parametrize(
+    "upload_multipart_concurrency,valid",
+    [
+        (1, True),
+        (5, True),
+        (32, True),
+        (0, False),
+        (-1, False),
+        (33, False),
+        (True, False),
+        (False, False),
+    ],
+)
+def test_configmodels_s3_upload_multipart_concurrency(upload_multipart_concurrency, valid):
+    """
+    test that ConfigS3Model validates upload_multipart_concurrency: only positive
+    integers within the allowed range (and not bools) are accepted
+    """
+    if valid:
+        model = configmodels.ConfigS3Model(
+            bucket_name="bucket1", upload_multipart_concurrency=upload_multipart_concurrency
+        )
+        assert model.upload_multipart_concurrency == upload_multipart_concurrency
+    else:
+        with pytest.raises(ValidationError):
+            configmodels.ConfigS3Model(bucket_name="bucket1", upload_multipart_concurrency=upload_multipart_concurrency)
+
+
+def test_configmodels_s3_upload_multipart_concurrency_default():
+    """
+    test that the default value for upload_multipart_concurrency is 1 (sequential),
+    preserving pre-existing behavior for users who don't set it
+    """
+    model = configmodels.ConfigS3Model(bucket_name="bucket1")
+    assert model.upload_multipart_concurrency == 1
