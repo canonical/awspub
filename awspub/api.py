@@ -76,18 +76,26 @@ def create(
     :type group: Optional[str]
     :param upload_multipart_concurrency: override the s3.upload_multipart_concurrency config
         option (number of S3 multipart upload parts to upload concurrently). if not given,
-        the value from the config file (or its default) is used
+        the value from the config file (or its default) is used. Ignored for direct snapshot creation.
     :type upload_multipart_concurrency: Optional[int]
     :return: the images grouped by name and by group
     :rtype: Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, Dict[str, str]]]
     """
 
     ctx = Context(config, config_mapping)
-    if upload_multipart_concurrency is not None:
-        s3_config = ConfigS3Model(**{**ctx.conf["s3"], "upload_multipart_concurrency": upload_multipart_concurrency})
-        ctx.conf["s3"]["upload_multipart_concurrency"] = s3_config.upload_multipart_concurrency
-    s3 = S3(ctx)
-    s3.upload_file(ctx.conf["source"]["path"])
+    if ctx.conf["snapshot"]["creation"] == "direct":
+        logger.info(
+            "snapshot creation is 'direct': the source image is not uploaded to S3; "
+            "the snapshot is created by streaming blocks via the EBS direct APIs"
+        )
+    else:
+        if upload_multipart_concurrency is not None:
+            s3_config = ConfigS3Model(
+                **{**ctx.conf["s3"], "upload_multipart_concurrency": upload_multipart_concurrency}
+            )
+            ctx.conf["s3"]["upload_multipart_concurrency"] = s3_config.upload_multipart_concurrency
+        s3 = S3(ctx)
+        s3.upload_file(ctx.conf["source"]["path"])
     images: List[Tuple[str, Image, Dict[str, _ImageInfo]]] = []
     for image_name, image in _images_filtered(ctx, group):
         image_result: Dict[str, _ImageInfo] = image.create()

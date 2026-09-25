@@ -1,12 +1,13 @@
 import glob
 import os
 import pathlib
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
 from ruamel.yaml.constructor import DuplicateKeyError
 
-from awspub import context
+from awspub import configmodels, context, image, sns
 
 curdir = pathlib.Path(__file__).parent.resolve()
 
@@ -113,3 +114,47 @@ def test_context_with_overlapping_regions_denylist_sns():
     with pytest.raises(ValidationError) as exc_info:
         context.Context(curdir / "fixtures/config-invalid-regions-denylist-sns.yaml", None)
     assert "appear in both 'regions' and 'regions_denylist'" in str(exc_info.value)
+
+
+@pytest.mark.parametrize(
+    "creation,s3_config,valid",
+    [
+        ("direct", None, True),
+        ("direct", {"bucket_name": "unused"}, True),
+        ("import", None, False),
+        ("import", {"bucket_name": "bucket1"}, True),
+    ],
+)
+def test_config_s3_required_only_for_import(creation, s3_config, valid):
+    config = {
+        "source": {"path": "image.raw", "architecture": "x86_64"},
+        "snapshot": {"creation": creation, "region": "us-west-2" if creation == "direct" else None},
+        "images": {"test-image": {"boot_mode": "uefi"}},
+    }
+    if s3_config is not None:
+        config["s3"] = s3_config
+    if valid:
+        model = configmodels.ConfigModel(**config)
+        assert model.snapshot.creation == creation
+    else:
+        with pytest.raises(ValidationError):
+            configmodels.ConfigModel(**config)
+
+
+def test_direct_region_discovery_without_s3():
+    ctx = context.Context(curdir / "fixtures/config-direct.yaml", None)
+    ctx.conf["images"]["test-image-direct"]["regions_denylist"] = ["region2"]
+    with patch("boto3.client") as client_mock:
+        ec2 = client_mock.return_value
+        ec2.describe_regions.return_value = {"Regions": [{"RegionName": "region1"}, {"RegionName": "region2"}]}
+
+        def client(service_name, region_name=None, **kwargs):
+            assert service_name == "ec2"
+            assert region_name == "region1"
+            return ec2
+
+        client_mock.side_effect = client
+        assert image.Image(ctx, "test-image-direct").image_regions == ["region1"]
+        assert sns.SNSNotification(ctx, "test-image-direct")._sns_regions(
+            {"regions": ["region1", "region2"], "regions_denylist": ["region1"]}
+        ) == ["region2"]

@@ -13,7 +13,6 @@ from awspub import exceptions
 from awspub.common import _get_regions, _split_partition
 from awspub.context import Context
 from awspub.image_marketplace import ImageMarketplace
-from awspub.s3 import S3
 from awspub.snapshot import Snapshot
 from awspub.sns import SNSNotification
 
@@ -63,7 +62,6 @@ class Image:
             raise ValueError(f"image '{self._image_name}' not found in context configuration")
 
         self._snapshot: Snapshot = Snapshot(context)
-        self._s3: S3 = S3(context)
 
     def __repr__(self):
         return f"<{self.__class__} :'{self.image_name}' (snapshot name: {self.snapshot_name})"
@@ -128,7 +126,7 @@ class Image:
             regions_configured = self.conf["regions"] if "regions" in self.conf else []
             regions_configured = self.conf.get("regions") or []
             regions_denylist = self.conf["regions_denylist"] if "regions_denylist" in self.conf else None
-            self._image_regions = _get_regions(self._s3.bucket_region, regions_configured, regions_denylist)
+            self._image_regions = _get_regions(self._ctx.snapshot_region, regions_configured, regions_denylist)
             self._image_regions_cached = True
         return self._image_regions
 
@@ -417,15 +415,14 @@ class Image:
         :return: a Dict with region names as keys and _ImageInfo objects as values
         :rtype: Dict[str, _ImageInfo]
         """
-        # this **must** be the region that is used for S3
-        ec2client: EC2Client = boto3.client("ec2", region_name=self._s3.bucket_region)
+        ec2client: EC2Client = boto3.client("ec2", region_name=self._ctx.snapshot_region)
 
         # make sure the initial snapshot exists
-        self._snapshot.create(ec2client, self.snapshot_name)
+        source_snapshot_id: str = self._snapshot.create(ec2client, self.snapshot_name)
 
         # make sure the snapshot exist in all required regions
         snapshot_ids: Dict[str, str] = self._snapshot.copy(
-            self.snapshot_name, self._s3.bucket_region, self.image_regions
+            self.snapshot_name, self._ctx.snapshot_region, self.image_regions, source_snapshot_id=source_snapshot_id
         )
 
         images: Dict[str, _ImageInfo] = dict()
