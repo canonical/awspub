@@ -14,7 +14,6 @@ from mypy_boto3_sts.client import STSClient
 from awspub.common import _get_regions
 from awspub.context import Context
 from awspub.exceptions import AWSAuthorizationException, AWSNotificationException
-from awspub.s3 import S3
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,6 @@ class SNSNotification(object):
         """
         self._ctx: Context = context
         self._image_name: str = image_name
-        self._s3: S3 = S3(context)
 
     @property
     def conf(self) -> List[Dict[str, Any]]:
@@ -53,7 +51,7 @@ class SNSNotification(object):
         if regions_configured is None:
             regions_configured = []
         regions_denylist = topic_config["regions_denylist"] if "regions_denylist" in topic_config else None
-        sns_regions = _get_regions(self._s3.bucket_region, regions_configured, regions_denylist)
+        sns_regions = _get_regions(self._ctx.snapshot_region, regions_configured, regions_denylist)
 
         return sns_regions
 
