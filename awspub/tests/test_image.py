@@ -179,15 +179,17 @@ def test_image___get_root_device_snapshot_id(root_device_name, block_device_mapp
         "called_start_change_set",
         "called_put_parameter",
         "called_sns_publish",
+        "skip_marketplace",
     ),
     [
-        ("test-image-6", "aws", True, True, False, False, False),
-        ("test-image-7", "aws", False, False, False, False, False),
-        ("test-image-8", "aws", True, True, True, True, False),
-        ("test-image-8", "aws-cn", True, True, False, True, False),
-        ("test-image-10", "aws", False, False, False, False, True),
-        ("test-image-11", "aws", False, False, False, False, True),
-        ("test-image-12", "aws", False, False, False, False, True),
+        ("test-image-6", "aws", True, True, False, False, False, False),
+        ("test-image-7", "aws", False, False, False, False, False, False),
+        ("test-image-8", "aws", True, True, True, True, False, False),
+        ("test-image-8", "aws", True, True, False, True, False, True),
+        ("test-image-8", "aws-cn", True, True, False, True, False, False),
+        ("test-image-10", "aws", False, False, False, False, True, False),
+        ("test-image-11", "aws", False, False, False, False, True, False),
+        ("test-image-12", "aws", False, False, False, False, True, False),
     ],
 )
 def test_image_publish(
@@ -198,6 +200,7 @@ def test_image_publish(
     called_start_change_set,
     called_put_parameter,
     called_sns_publish,
+    skip_marketplace,
 ):
     """
     Test the publish() for a given image
@@ -230,7 +233,7 @@ def test_image_publish(
         instance.list_buckets.return_value = {"Buckets": [{"Name": "bucket1"}]}
         ctx = context.Context(curdir / "fixtures/config1.yaml", None)
         img = image.Image(ctx, imagename)
-        img.publish()
+        img.publish(skip_marketplace=skip_marketplace)
         assert instance.modify_image_attribute.called == called_mod_image
         assert instance.modify_snapshot_attribute.called == called_mod_snapshot
         assert instance.start_change_set.called == called_start_change_set
@@ -570,3 +573,48 @@ def test_register_image__should_raise_on_unhandled_client_error():
     snapshot_ids = {"eu-central-1": "my-snapshot"}
     with pytest.raises(botocore.exceptions.ClientError):
         img._register_image(snapshot_ids["eu-central-1"], instance) is None
+
+
+def test_image_publish_marketplace_only_requests_marketplace_version_without_other_publication():
+    """Marketplace-only publication does not make images public or update notifications/parameters."""
+    with patch("boto3.client") as bclient_mock:
+        instance = bclient_mock.return_value
+        instance.meta.partition = "aws"
+        instance.describe_images.return_value = {
+            "Images": [
+                {
+                    "Name": "test-image-8",
+                    "ImageId": "ami-abc",
+                    "RootDeviceName": "/dev/sda1",
+                    "BlockDeviceMappings": [
+                        {
+                            "DeviceName": "/dev/sda1",
+                            "Ebs": {"SnapshotId": "snap-0be0763f84af34e05"},
+                        }
+                    ],
+                }
+            ]
+        }
+        instance.describe_entity.return_value = {"DetailsDocument": {}}
+        instance.start_change_set.return_value = {"ChangeSetId": "change-set-abc"}
+
+        ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+        ctx.conf["images"]["test-image-8"]["sns"] = [
+            {"topic": {"subject": "subject", "message": {"default": "message"}, "regions": ["us-east-1"]}}
+        ]
+        img = image.Image(ctx, "test-image-8")
+        img.publish_marketplace()
+
+        assert instance.start_change_set.call_count == 1
+        change_set = instance.start_change_set.call_args.kwargs["ChangeSet"]
+        assert (
+            change_set[0]["DetailsDocument"]["DeliveryOptions"][0]["Details"]["AmiDeliveryOptionDetails"]["AmiSource"][
+                "AmiId"
+            ]
+            == "ami-abc"
+        )
+        assert not instance.modify_image_attribute.called
+        assert not instance.modify_snapshot_attribute.called
+        assert not instance.get_parameters.called
+        assert not instance.put_parameter.called
+        assert not instance.publish.called

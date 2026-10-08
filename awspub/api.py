@@ -122,10 +122,29 @@ def list(
     return images_by_name, images_by_group
 
 
-def publish(config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[str]):
+def publish(
+    config: pathlib.Path,
+    config_mapping: pathlib.Path,
+    group: Optional[str],
+    *,
+    skip_marketplace: bool = False,
+):
     """
-    Make available images in the partition of the used account based on
-    the given configuration file public
+    Make available images in the partition of the used account public.
+
+    :param config: the configuration file path
+    :param config_mapping: the config template mapping file path
+    :param group: only handles images from given group
+    :param skip_marketplace: do not request Marketplace versions
+    """
+    ctx = Context(config, config_mapping)
+    for image_name, image in _images_filtered(ctx, group):
+        image.publish(skip_marketplace=skip_marketplace)
+
+
+def publish_marketplace(config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[str]):
+    """
+    Request Marketplace versions for images in the partition of the used account.
 
     :param config: the configuration file path
     :type config: pathlib.Path
@@ -136,7 +155,7 @@ def publish(config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[
     """
     ctx = Context(config, config_mapping)
     for image_name, image in _images_filtered(ctx, group):
-        image.publish()
+        image.publish_marketplace()
 
 
 def cleanup(config: pathlib.Path, config_mapping: pathlib.Path, group: Optional[str]):
