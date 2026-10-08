@@ -47,7 +47,14 @@ def _publish(args) -> None:
     """
     Make available images public
     """
-    awspub.publish(args.config, args.config_mapping, args.group)
+    awspub.publish(args.config, args.config_mapping, args.group, skip_marketplace=args.skip_marketplace)
+
+
+def _publish_marketplace(args) -> None:
+    """
+    Request new Marketplace versions for images.
+    """
+    awspub.publish_marketplace(args.config, args.config_mapping, args.group)
 
 
 def _parser():
@@ -102,9 +109,20 @@ def _parser():
     )
     p_publish.add_argument("--config-mapping", type=pathlib.Path, help="the image config template mapping file path")
     p_publish.add_argument("--group", type=str, help="only handles images from given group")
+    p_publish.add_argument("--skip-marketplace", action="store_true", help="skip requesting new Marketplace versions")
     p_publish.add_argument("config", type=pathlib.Path, help="the image configuration file path")
 
     p_publish.set_defaults(func=_publish)
+
+    # publish-marketplace
+    p_publish_marketplace = p_sub.add_parser("publish-marketplace", help="Publish images to AWS Marketplace")
+    p_publish_marketplace.add_argument(
+        "--config-mapping", type=pathlib.Path, help="the image config template mapping file path"
+    )
+    p_publish_marketplace.add_argument("--group", type=str, help="only handles images from given group")
+    p_publish_marketplace.add_argument("config", type=pathlib.Path, help="the image configuration file path")
+
+    p_publish_marketplace.set_defaults(func=_publish_marketplace)
 
     return parser
 
