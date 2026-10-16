@@ -1,0 +1,62 @@
+name: Extract package version
+description: Derive a PEP 440 package version from git metadata
+outputs:
+  version:
+    description: Package version for the build
+    value: ${{ steps.version.outputs.version }}
+runs:
+  using: composite
+  steps:
+    - id: version
+      shell: sh
+      run: |
+        if description="$(git describe --tags --long 2>/dev/null)"; then
+          case "$description" in
+            [vV][0-9]*-*-g[0-9a-fA-F]*|[0-9]*-*-g[0-9a-fA-F]*)
+              commit="${description##*-g}"
+              rest="${description%-g*}"
+              distance="${rest##*-}"
+              release="${rest%-*}"
+              release="${release#[vV]}"
+
+              case "$distance" in
+                ""|*[!0-9]*)
+                  printf 'Unsupported git describe distance: %s\n' "$distance" >&2
+                  exit 1
+                  ;;
+              esac
+
+              if [ -z "$release" ]; then
+                printf 'Invalid release tag in git describe: %s\n' "$description" >&2
+                exit 1
+              fi
+
+              if [ "$distance" -eq 0 ]; then
+                version="$release"
+              else
+                version="${release}+${distance}.g${commit}"
+              fi
+              ;;
+            *)
+              printf 'Unsupported git describe version: %s\n' "$description" >&2
+              exit 1
+              ;;
+          esac
+        else
+          short_sha="$(git rev-parse --short=7 HEAD 2>/dev/null || true)"
+          if [ -z "$short_sha" ] && [ -n "${GITHUB_SHA:-}" ]; then
+            short_sha="$(printf '%s' "${GITHUB_SHA}" | cut -c 1-7)"
+          fi
+
+          if [ -n "$short_sha" ]; then
+            version="0.0.0+g${short_sha}"
+          else
+            version="0.0.0"
+          fi
+        fi
+
+        if [ -n "${GITHUB_OUTPUT:-}" ]; then
+          printf 'version=%s\n' "${version}" >> "${GITHUB_OUTPUT}"
+        else
+          printf 'version=%s\n' "${version}"
+        fi

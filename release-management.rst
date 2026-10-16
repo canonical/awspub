@@ -22,5 +22,17 @@ channel. Promoting to `latest/stable` can be done with:
 
    snapcraft promote --from-channel latest/edge --to-channel latest/stable awspub
 
+ghcr.io (Docker)
+----------------
+
+Multi-architecture Docker images (amd64 and arm64) are automatically built and published
+to GitHub Container Registry (`ghcr.io/canonical/awspub`_):
+
+* Pushes to the ``main`` branch are tagged with the commit SHA, ``main``, and ``latest``.
+* Release tags (``v*``) are tagged with the semantic version (e.g. ``0.1.1`` and ``0.1``) and commit SHA.
+
+Only pushes to ``main`` update ``latest``.
+
 
 .. _new-release: https://github.com/canonical/awspub/releases/new
+.. _`ghcr.io/canonical/awspub`: https://github.com/canonical/awspub/pkgs/container/awspub
