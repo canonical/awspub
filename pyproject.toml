@@ -24,7 +24,6 @@ python = "^3.10"
 boto3 = "*"
 pydantic = "^2"
 boto3-stubs = {extras = ["essential", "marketplace-catalog", "ssm", "s3", "sns", "sts"], version = "^1.28.83"}
-autodoc-pydantic = "^2.0.1"
 ruamel-yaml = "^0.19.0"
 
 
@@ -51,7 +50,7 @@ optional = true
 [tool.poetry.group.doc.dependencies]
 Sphinx = "*"
 pydantic-settings = "*"
-autodoc_pydantic = "*"
+autodoc_pydantic = "^2.0.1"
 
 
 [tool.poetry.scripts]
