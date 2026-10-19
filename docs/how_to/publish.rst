@@ -218,6 +218,33 @@ for the given entity:
   awspub create config.yaml
   awspub publish config.yaml
 
+To request a Marketplace version without changing AMI or snapshot visibility,
+writing SSM parameters, or sending SNS notifications, use ``publish-marketplace``:
+
+.. code-block:: shell
+
+  awspub publish-marketplace config.yaml --config-mapping mapping.yaml --group release
+
+``--group`` selects images, not publication actions. The selected images must
+already exist in ``us-east-1`` and have a ``marketplace`` configuration. Temporary
+images and partitions other than the commercial ``aws`` partition are skipped.
+The existing source file and configuration mapping are still required to load
+the configuration. This command does not create, copy, or share AMIs, and it does
+not change the Marketplace product's visibility.
+
+By default, ``publish`` performs all configured publication actions, including
+Marketplace requests. To split normal publication from Marketplace submission,
+exclude Marketplace from the first operation:
+
+.. code-block:: shell
+
+  awspub publish config.yaml --config-mapping mapping.yaml --group release --skip-marketplace
+  awspub publish-marketplace config.yaml --config-mapping mapping.yaml --group release
+
+``--skip-marketplace`` leaves configured AMI and snapshot visibility changes,
+SSM parameters, and SNS notifications enabled. Setting ``public: false`` disables
+only AMI and snapshot visibility changes, not SSM, Marketplace, or SNS publication.
+
 SSM Parameter Store
 ~~~~~~~~~~~~~~~~~~~
 
