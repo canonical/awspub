@@ -26,3 +26,15 @@ class AWSNotificationException(Exception):
 
 class AWSAuthorizationException(Exception):
     pass
+
+
+class InvalidSourceImageException(Exception):
+    pass
+
+
+class ImportSnapshotTaskConflictException(Exception):
+    pass
+
+
+class EBSSnapshotException(Exception):
+    pass

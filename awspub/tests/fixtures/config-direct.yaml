@@ -1,0 +1,19 @@
+awspub:
+  snapshot:
+    creation: "direct"
+    region: "region1"
+
+  source:
+    # config-direct-source.raw contains one non-zero 512 KiB block followed by one all-zero block
+    path: "config-direct-source.raw"
+    architecture: "x86_64"
+
+  images:
+    "test-image-direct":
+      description: |
+        A test image with direct snapshot creation
+      boot_mode: "uefi"
+      regions:
+        - region1
+        - region2
+      temporary: true

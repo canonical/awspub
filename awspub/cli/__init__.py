@@ -69,7 +69,7 @@ def _parser():
         type=int,
         default=None,
         help="number of S3 multipart upload parts to upload concurrently (1-32). "
-        "overrides s3.upload_multipart_concurrency from the config file if set",
+        "overrides s3.upload_multipart_concurrency from the config file if set. Ignored in direct snapshot mode",
     )
     p_create.add_argument("config", type=pathlib.Path, help="the image configuration file path")
     p_create.set_defaults(func=_create)

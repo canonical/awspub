@@ -1,0 +1,17 @@
+awspub:
+  source:
+    path: "image.vmdk"
+    architecture: "x86_64"
+  snapshot:
+    # create the snapshot via the EBS direct APIs by streaming only the non-zero
+    # 512 KiB blocks of the source image (raw or vmdk). this skips both the S3
+    # upload and the (much slower) EC2 VM Import service.
+    # requires the ebs:StartSnapshot, ebs:PutSnapshotBlock and ebs:CompleteSnapshot
+    # IAM permissions.
+    creation: "direct"
+    # region for the initial snapshot; no S3 bucket is needed.
+    region: "us-east-1"
+    block_upload_concurrency: 8
+  images:
+    "my-custom-image":
+      boot_mode: "uefi-preferred"

@@ -153,3 +153,69 @@ def test_configmodels_s3_upload_multipart_concurrency_default():
     """
     model = configmodels.ConfigS3Model(bucket_name="bucket1")
     assert model.upload_multipart_concurrency == 1
+
+
+@pytest.mark.parametrize("creation,region", [("import", None), ("direct", "us-west-2")])
+def test_configmodels_snapshot_creation_valid(creation, region):
+    """
+    test that ConfigSnapshotModel accepts both valid creation modes
+    """
+    model = configmodels.ConfigSnapshotModel(creation=creation, region=region)
+    assert model.creation == creation
+
+
+@pytest.mark.parametrize("region_config", [{}, {"region": ""}])
+def test_configmodels_direct_snapshot_requires_region(region_config):
+    with pytest.raises(ValidationError):
+        configmodels.ConfigSnapshotModel(creation="direct", **region_config)
+
+
+def test_configmodels_snapshot_creation_invalid():
+    """
+    test that ConfigSnapshotModel rejects unknown creation modes
+    """
+    with pytest.raises(ValidationError):
+        configmodels.ConfigSnapshotModel(creation="fast")
+
+
+@pytest.mark.parametrize(
+    "block_upload_concurrency,valid",
+    [(1, True), (8, True), (32, True), (0, False), (33, False), (True, False), (False, False)],
+)
+def test_configmodels_snapshot_block_upload_concurrency(block_upload_concurrency, valid):
+    """
+    test that ConfigSnapshotModel validates block_upload_concurrency: only positive integers
+    within the allowed range (and not bools) are accepted
+    """
+    if valid:
+        model = configmodels.ConfigSnapshotModel(block_upload_concurrency=block_upload_concurrency)
+        assert model.block_upload_concurrency == block_upload_concurrency
+    else:
+        with pytest.raises(ValidationError):
+            configmodels.ConfigSnapshotModel(block_upload_concurrency=block_upload_concurrency)
+
+
+def test_configmodels_snapshot_defaults():
+    """
+    test that snapshot creation defaults to 'import' with a block upload concurrency of 8
+    """
+    model = configmodels.ConfigSnapshotModel()
+    assert model.creation == "import"
+    assert model.block_upload_concurrency == 8
+
+
+def test_context_snapshot_section_defaults():
+    """
+    test that a config without a snapshot section gets the default snapshot configuration
+    """
+    ctx = context.Context(curdir / "fixtures/config1.yaml", None)
+    assert ctx.conf["snapshot"]["creation"] == "import"
+    assert ctx.conf["snapshot"]["block_upload_concurrency"] == 8
+
+
+def test_context_snapshot_section_direct():
+    """
+    test that a config with snapshot.creation 'direct' is picked up by the context
+    """
+    ctx = context.Context(curdir / "fixtures/config-direct.yaml", None)
+    assert ctx.conf["snapshot"]["creation"] == "direct"

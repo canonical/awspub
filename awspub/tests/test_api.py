@@ -126,3 +126,30 @@ def test_api_create_upload_multipart_concurrency_override_invalid(upload_multipa
             None,
             upload_multipart_concurrency=upload_multipart_concurrency,
         )
+
+
+@pytest.mark.parametrize("upload_multipart_concurrency", [None, 6])
+@patch("awspub.api.Image")
+@patch("awspub.api.S3", side_effect=AssertionError("S3 is unavailable"))
+def test_api_create_direct_mode_skips_upload(s3_mock, image_mock, upload_multipart_concurrency):
+    """
+    Direct creation needs no S3 configuration, even with an import-only CLI override.
+    """
+    api.create(
+        curdir / "fixtures/config-direct.yaml",
+        None,
+        None,
+        upload_multipart_concurrency=upload_multipart_concurrency,
+    )
+    s3_mock.assert_not_called()
+
+
+@patch("awspub.api.Image")
+@patch("awspub.api.S3")
+def test_api_create_import_mode_uploads(s3_mock, image_mock):
+    """
+    test that create() uploads the source file to S3 in the default (import) snapshot
+    creation mode
+    """
+    api.create(curdir / "fixtures/config1.yaml", None, None)
+    s3_mock.return_value.upload_file.assert_called_once()

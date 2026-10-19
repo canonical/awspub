@@ -11,8 +11,7 @@ from awspub.common import _split_partition
 class ConfigS3Model(BaseModel):
     """
     S3 configuration.
-    This is required for uploading source files (usually .vmdk) to a bucket so
-    snapshots can be created out of the s3 file
+    Required for import snapshot creation; unused in direct mode.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -44,6 +43,56 @@ class ConfigSourceModel(BaseModel):
 
     path: pathlib.Path = Field(description="Path to a local .vmdk image")
     architecture: Literal["x86_64", "arm64"] = Field(description="The architecture of the given .vmdk image")
+
+
+class ConfigSnapshotModel(BaseModel):
+    """
+    Snapshot creation configuration.
+    This defines how the EC2 snapshot is created from the source image.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    creation: Literal["import", "direct"] = Field(
+        description=(
+            "How to create the EC2 snapshot from the source image. "
+            "'import' (default) uploads the source image to S3 and uses the EC2 VM Import service "
+            "(import-snapshot) to create the snapshot - slow (typically several minutes) but needs no "
+            "extra IAM permissions beyond S3/EC2. "
+            "'direct' creates the snapshot via the EBS direct APIs (StartSnapshot/PutSnapshotBlock/"
+            "CompleteSnapshot) by streaming only the non-zero 512 KiB blocks of the source image "
+            "(raw or vmdk). This is much faster (no VM Import queue/conversion) but requires the "
+            "ebs:StartSnapshot, ebs:PutSnapshotBlock and ebs:CompleteSnapshot IAM permissions"
+        ),
+        default="import",
+    )
+    region: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        description=(
+            "Region in which to create the initial snapshot. Required for 'direct' creation; "
+            "'import' creation always uses the S3 bucket region"
+        ),
+    )
+    block_upload_concurrency: int = Field(
+        default=8,
+        ge=1,
+        le=32,
+        description="The number of snapshot blocks to upload concurrently in 'direct' creation mode (1-32)",
+    )
+
+    @field_validator("block_upload_concurrency", mode="before")
+    @classmethod
+    def _block_upload_concurrency_not_bool(cls, v):
+        if isinstance(v, bool):
+            raise ValueError("block_upload_concurrency must be an int, not a bool")
+        return v
+
+    @model_validator(mode="after")
+    def check_region(self) -> "ConfigSnapshotModel":
+        if self.creation == "direct" and not self.region:
+            raise ValueError("snapshot.region is required for direct snapshot creation")
+        return self
 
 
 class ConfigImageMarketplaceSecurityGroupModel(BaseModel):
@@ -270,7 +319,20 @@ class ConfigModel(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    s3: ConfigS3Model
+    s3: Optional[ConfigS3Model] = Field(
+        default=None,
+        description="S3 configuration, required for import snapshot creation and unused in direct mode",
+    )
     source: ConfigSourceModel
+    snapshot: ConfigSnapshotModel = Field(
+        description="Optional snapshot creation configuration (how the snapshot is created from the source image)",
+        default_factory=ConfigSnapshotModel,
+    )
     images: Dict[str, ConfigImageModel]
     tags: Optional[Dict[str, str]] = Field(description="Optional Tags to apply to all resources", default={})
+
+    @model_validator(mode="after")
+    def check_s3(self) -> "ConfigModel":
+        if self.snapshot.creation == "import" and self.s3 is None:
+            raise ValueError("s3 is required for import snapshot creation")
+        return self

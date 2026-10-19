@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import pathlib
+from functools import cached_property
 from string import Template
 from typing import Dict
 
@@ -56,6 +57,17 @@ class Context:
     @property
     def conf(self):
         return self._conf
+
+    @cached_property
+    def snapshot_region(self) -> str:
+        """Region for the initial snapshot and partition-aware region discovery."""
+        if self.conf["snapshot"]["creation"] == "direct":
+            return self.conf["snapshot"]["region"]
+
+        # S3 imports Context, so load it only when resolving an import-mode region.
+        from awspub.s3 import S3
+
+        return S3(self).bucket_region
 
     @property
     def source_sha256(self):
