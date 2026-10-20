@@ -54,7 +54,7 @@ jobs:
         uses: ./.github/actions/extract-version
 
       - name: Build arm64 image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/arm64
@@ -65,7 +65,7 @@ jobs:
           cache-from: type=gha
 
       - name: Build local image for smoke test
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           load: true
