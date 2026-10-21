@@ -3,26 +3,28 @@ FROM python:3.12-slim AS builder
 
 ARG VERSION=0.0.0
 
-# Pass the version to the dynamic-versioning plugin
-ENV POETRY_DYNAMIC_VERSIONING_BYPASS=${VERSION}
+# Pass the version to hatch-vcs (no .git directory in the build context)
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION} \
+    UV_PROJECT_ENVIRONMENT=/app/.venv \
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1
 
 WORKDIR /app
 
-# Install Poetry and enable local virtual environments
-RUN pip install --no-cache-dir "poetry==2.*" "poetry-dynamic-versioning" && \
-    poetry config virtualenvs.in-project true
+# Install uv
+RUN pip install --no-cache-dir uv
 
 # Copy dependency files
-COPY pyproject.toml poetry.lock readme.rst ./
+COPY pyproject.toml uv.lock readme.rst ./
 
 # Install Python dependencies only
-RUN poetry install --no-interaction --no-ansi --only main --no-directory --no-root
+RUN uv sync --locked --no-dev --no-install-project
 
 # Copy source code
 COPY awspub/ ./awspub/
 
 # Install awspub package itself
-RUN poetry install --no-interaction --no-ansi --only main
+RUN uv sync --locked --no-dev --no-editable
 
 # ============ Runtime Stage ============
 FROM python:3.12-slim

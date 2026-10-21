@@ -1,64 +1,55 @@
 [build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
-build-backend = "poetry_dynamic_versioning.backend"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
-[tool.poetry]
+[project]
 name = "awspub"
-version = "0.0.0"
+dynamic = ["version"]
 description = "Publish images to AWS EC2"
-
+readme = "readme.rst"
 license = "GPL-3.0-or-later"
-
 authors = [
-    "Thomas Bechtold <thomasbechtold@jpberlin.de>"
+    { name = "Thomas Bechtold", email = "thomasbechtold@jpberlin.de" },
+]
+keywords = ["AWS", "EC2", "publication"]
+requires-python = ">=3.10"
+dependencies = [
+    "boto3",
+    "pydantic>=2,<3",
+    "boto3-stubs[essential,marketplace-catalog,ssm,s3,sns,sts]>=1.28.83,<2",
+    "ruamel-yaml>=0.19.0,<0.20",
 ]
 
-repository = "https://github.com/canonical/awspub"
-homepage = "https://github.com/canonical/awspub"
-readme = ["readme.rst"]
-keywords = ["AWS", "EC2", "publication"]
+[project.urls]
+Homepage = "https://github.com/canonical/awspub"
+Repository = "https://github.com/canonical/awspub"
 
-
-[tool.poetry.dependencies]
-python = "^3.10"
-boto3 = "*"
-pydantic = "^2"
-boto3-stubs = {extras = ["essential", "marketplace-catalog", "ssm", "s3", "sns", "sts"], version = "^1.28.83"}
-ruamel-yaml = "^0.19.0"
-
-
-[tool.poetry.group.test]
-optional = true
-
-[tool.poetry.group.test.dependencies]
-flake8 = "*"
-black = "*"
-pytest = "*"
-coverage = "^7.4.1"
-isort = "^9.0.0"
-
-[tool.poetry.group.type]
-optional = true
-
-[tool.poetry.group.type.dependencies]
-mypy = "*"
-pytest = "*"
-
-[tool.poetry.group.doc]
-optional = true
-
-[tool.poetry.group.doc.dependencies]
-Sphinx = "*"
-pydantic-settings = "*"
-autodoc_pydantic = "^2.0.1"
-
-
-[tool.poetry.scripts]
+[project.scripts]
 awspub = "awspub.cli:main"
 
-[tool.poetry-dynamic-versioning]
-enable = true
-vcs = 'git'
+[dependency-groups]
+test = [
+    "flake8",
+    "black",
+    "pytest",
+    "coverage>=7.4.1,<8",
+    "isort>=9.0.0,<10",
+]
+type = [
+    "mypy",
+    "pytest",
+]
+doc = [
+    "Sphinx",
+    "pydantic-settings",
+    "autodoc_pydantic>=2.0.1,<3",
+]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["awspub"]
 
 [tool.isort]
 profile = "black"
