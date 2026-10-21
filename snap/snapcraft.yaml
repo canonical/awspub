@@ -52,8 +52,10 @@ apps:
 
 parts:
   awspub:
-    plugin: poetry
+    plugin: uv
     source: .
+    build-snaps:
+      - astral-uv
     build-packages:
       - git
     override-pull: |

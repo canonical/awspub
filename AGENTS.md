@@ -22,17 +22,17 @@ implemented in `awspub/cli/`).
 - `awspub/` — main Python package
 - `docs/` — Sphinx documentation (config samples, how-to guides, reference docs)
 - `snap/` — snapcraft packaging
-- `pyproject.toml` / `poetry.lock` — dependencies, managed with Poetry
+- `pyproject.toml` / `uv.lock` — dependencies, managed with uv
 - `tox.ini` — defines the `test`, `lint`, `type`, and `format` environments
 
 ## Setup
 
-Dependencies are managed with [Poetry](https://python-poetry.org/) and tasks
-are run through [tox](https://tox.wiki/). Don't install new tooling; use what
-tox/poetry already provide.
+Dependencies are managed with [uv](https://docs.astral.sh/uv/) and tasks
+are run through [tox](https://tox.wiki/) using the `tox-uv` plugin. Don't install
+new tooling; use what tox/uv already provide.
 
 ```bash
-poetry install --with test,type,doc
+uv sync --all-groups
 ```
 
 ## Build, test, and lint
@@ -46,10 +46,10 @@ tox -e type      # mypy
 tox -e format    # auto-format with black + isort (run before committing)
 ```
 
-Run a single test file/case directly with poetry if iterating quickly:
+Run a single test file/case directly with uv if iterating quickly:
 
 ```bash
-poetry run pytest awspub/tests/test_image.py -k some_test --import-mode importlib
+uv run pytest awspub/tests/test_image.py -k some_test --import-mode importlib
 ```
 
 - Line length limit is **120** characters (black, flake8).
