@@ -1,0 +1,12 @@
+name: awspub
+base: ubuntu@26.04
+sdks:
+  - name: uv
+    channel: latest/stable
+  - name: direnvrc
+    channel: latest/stable
+  - name: copilot
+    channel: latest/stable
+
+actions:
+  copilot: direnv exec /project copilot "$@"
