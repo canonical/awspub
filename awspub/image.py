@@ -543,51 +543,60 @@ class Image:
         ec2client.create_tags(Resources=[resp["ImageId"]], Tags=self._tags)
         return _ImageInfo(resp["ImageId"], snapshot_id)
 
-    def publish(self) -> None:
+    def publish_marketplace(self) -> None:
         """
-        Handle all publication steps
-        - make image and underlying root device snapshot public if the public flag is set
-        - request a new marketplace version for the image in us-east-1 if the marketplace config is present
-        Note: if the temporary flag is set in the image, this method will do nothing
-        Note: this command doesn't unpublish anything!
+        Request a new Marketplace version for the image in us-east-1.
+
+        Temporary images are never published. Marketplace publication is only
+        supported in the commercial AWS partition and requires an existing
+        image in us-east-1.
         """
         # never publish temporary images
         if self.conf["temporary"]:
             logger.warning(f"image {self.image_name} marked as temporary. do not publish")
             return
 
-        # make snapshot and image public if requested in the image
+        # handle marketplace publication
+        if not self.conf["marketplace"]:
+            logger.info(f"image {self.image_name} has no marketplace configuration. do not publish")
+            return
+
+        # the "marketplace" configuration is only valid in the "aws" partition
+        partition = boto3.client("ec2").meta.partition
+        if partition == "aws":
+            logger.info(f"marketplace version request for {self.image_name}")
+            # image needs to be in us-east-1
+            ec2client: EC2Client = boto3.client("ec2", region_name="us-east-1")
+            image_info: Optional[_ImageInfo] = self._get(ec2client)
+            if image_info:
+                im = ImageMarketplace(self._ctx, self.image_name)
+                im.request_new_version(image_info.image_id)
+            else:
+                logger.error(
+                    f"can not request marketplace version for {self.image_name} because no image found in us-east-1"
+                )
+        else:
+            logger.info(
+                f"found marketplace config for {self.image_name} and partition 'aws' but "
+                f"currently using partition {partition}. Ignoring marketplace config."
+            )
+
+    def publish(self, *, skip_marketplace: bool = False) -> None:
+        """Handle publication steps, optionally omitting Marketplace."""
+        if self.conf["temporary"]:
+            logger.warning(f"image {self.image_name} marked as temporary. do not publish")
+            return
+
         if self.conf["public"]:
             self._public()
         else:
             logger.info(f"image {self.image_name} not marked as public. do not publish")
 
-        # handle SSM parameter store
         if self.conf["ssm_parameter"]:
             self._put_ssm_parameters()
 
-        # handle marketplace publication
-        if self.conf["marketplace"]:
-            # the "marketplace" configuration is only valid in the "aws" partition
-            partition = boto3.client("ec2").meta.partition
-            if partition == "aws":
-                logger.info(f"marketplace version request for {self.image_name}")
-                # image needs to be in us-east-1
-                ec2client: EC2Client = boto3.client("ec2", region_name="us-east-1")
-                image_info: Optional[_ImageInfo] = self._get(ec2client)
-                if image_info:
-                    im = ImageMarketplace(self._ctx, self.image_name)
-                    im.request_new_version(image_info.image_id)
-                else:
-                    logger.error(
-                        f"can not request marketplace version for {self.image_name} because no image found in us-east-1"
-                    )
-            else:
-                logger.info(
-                    f"found marketplace config for {self.image_name} and partition 'aws' but "
-                    f"currently using partition {partition}. Ignoring marketplace config."
-                )
+        if not skip_marketplace:
+            self.publish_marketplace()
 
-        # send ssn notification
         if self.conf["sns"]:
             self._sns_publish()
