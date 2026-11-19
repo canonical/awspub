@@ -35,6 +35,10 @@ plugs:
     interface: personal-files
     read:
     - $HOME/.aws/models
+  dot-aws-login-cache:
+    interface: personal-files
+    write:
+    - $HOME/.aws/login/cache
 
 apps:
   awspub:
@@ -49,6 +53,7 @@ apps:
       - dot-aws-config
       - dot-aws-credentials
       - dot-aws-models
+      - dot-aws-login-cache
 
 parts:
   awspub:
