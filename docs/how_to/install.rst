@@ -36,6 +36,15 @@ Install awspub using snap
 This will install the latest version in your machine. We would highly recommend you install the latest version, but
 refer to this `Snapcraft channel doc`_ for installing a different version or from a specific channel.
 
+To use credentials created by ``aws login``, allow awspub to read and refresh
+the login cache:
+
+.. code-block::
+
+    sudo snap connect awspub:dot-aws-login-cache
+
+Use ``AWS_PROFILE`` to select a named login profile.
+
 Run awspub using Docker
 -----------------------
 
